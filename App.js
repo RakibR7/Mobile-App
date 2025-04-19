@@ -1,3 +1,4 @@
+// App.js
 import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -33,7 +34,10 @@ export default function App() {
         <Stack.Screen
           name="Chat"
           component={ChatScreen}
-          options={{ title: 'Chat with Tutor' }}
+          options={{
+            title: 'Chat with Tutor',
+            headerBackTitle: 'Back'
+          }}
         />
         <Stack.Screen
           name="About"
@@ -46,7 +50,7 @@ export default function App() {
           options={{ title: 'Choose a Tutor' }}
         />
       </Stack.Navigator>
-      <StatusBar style="auto" />
+      <StatusBar style="light" />
     </NavigationContainer>
   );
 }

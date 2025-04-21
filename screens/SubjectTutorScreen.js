@@ -112,6 +112,17 @@ export default function SubjectTutorScreen({ navigation }) {
               <Text style={styles.buttonSubtext}>Start New Conversation</Text>
             </TouchableOpacity>
 
+            <TouchableOpacity
+              style={styles.exerciseButton}
+              onPress={() => navigation.navigate('Exercise', {
+                tutor: subject.id,
+                exerciseType: 'practice'
+              })}
+              disabled={loading}
+            >
+              <Text style={styles.buttonText}>Practice Exercises</Text>
+            </TouchableOpacity>
+
             {/* Display recent conversations for this subject */}
             {recentConversations[subject.id]?.length > 0 && (
               <View style={styles.recentConversations}>
@@ -161,6 +172,14 @@ const styles = StyleSheet.create({
   },
   button: {
     backgroundColor: '#4CAF50',
+    padding: 15,
+    borderRadius: 5,
+    width: '100%',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  exerciseButton: {
+    backgroundColor: '#FF9800',
     padding: 15,
     borderRadius: 5,
     width: '100%',

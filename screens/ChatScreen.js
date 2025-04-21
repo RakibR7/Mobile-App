@@ -14,6 +14,7 @@ import {
   RefreshControl,
   Alert
 } from 'react-native';
+// At the top of ChatScreen.js
 import { saveMessage } from '../services/apiService';
 import { syncMessages, startPolling } from '../services/syncService';
 

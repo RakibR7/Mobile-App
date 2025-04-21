@@ -29,6 +29,7 @@ export const fetchAIResponse = async (userMessage, selectedModel, tutor) => {
 
 // Get all conversations for a tutor
 export const getConversations = async (tutor) => {
+  console.log('Fetching conversations for tutor:', tutor);
   try {
     const response = await fetch(`${API_BASE_URL}/api/conversations?tutor=${tutor}`);
 
@@ -119,6 +120,8 @@ export const getPerformanceData = async (userId, tutor, topic, activityType) => 
     if (topic) url += `&topic=${topic}`;
     if (activityType) url += `&activityType=${activityType}`;
 
+    console.log('Fetching performance data from:', url);
+
     const response = await fetch(url);
 
     if (!response.ok) {
@@ -128,14 +131,33 @@ export const getPerformanceData = async (userId, tutor, topic, activityType) => 
     return await response.json();
   } catch (error) {
     console.error("Error fetching performance data:", error);
-    throw error;
+    return [];
+  }
+};
+
+// Get subtopic progress data
+export const getSubtopicProgress = async (userId, tutor) => {
+  try {
+    const url = `${API_BASE_URL}/api/progress/subtopics?userId=${userId}&tutor=${tutor}`;
+    console.log('Fetching subtopic progress from:', url);
+
+    const response = await fetch(url);
+
+    if (!response.ok) {
+      throw new Error('Failed to fetch subtopic progress');
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error("Error fetching subtopic progress:", error);
+    return { overall: 0, subtopics: [] };
   }
 };
 
 // Update performance data
 export const updatePerformanceData = async (performanceData) => {
   try {
-    console.log('Sending performance data to API:', JSON.stringify(performanceData));
+    console.log('Updating performance data:', JSON.stringify(performanceData).substring(0, 200) + '...');
 
     const response = await fetch(`${API_BASE_URL}/api/performance`, {
       method: 'POST',
@@ -144,37 +166,12 @@ export const updatePerformanceData = async (performanceData) => {
     });
 
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`Server error (${response.status}):`, errorText);
-      throw new Error(`Failed to update performance: ${response.status} ${errorText}`);
+      throw new Error('Failed to update performance data');
     }
 
-    const data = await response.json();
-    console.log('Performance data saved successfully:', data._id);
-    return data;
+    return await response.json();
   } catch (error) {
     console.error("Error updating performance data:", error);
-    throw error;
-  }
-};
-
-export const getSubtopicProgress = async (userId, tutor) => {
-  try {
-    console.log(`Fetching subtopic progress for user ${userId}, tutor ${tutor}`);
-
-    const response = await fetch(`${API_BASE_URL}/api/progress/subtopics?userId=${userId}&tutor=${tutor}`);
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`Server error (${response.status}):`, errorText);
-      throw new Error(`Failed to fetch progress: ${response.status} ${errorText}`);
-    }
-
-    const data = await response.json();
-    console.log('Received subtopic progress data:', data);
-    return data;
-  } catch (error) {
-    console.error("Error fetching subtopic progress:", error);
-    throw error;
+    return null;
   }
 };

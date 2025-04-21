@@ -11,6 +11,7 @@ import SubjectTutorScreen from './screens/SubjectTutorScreen';
 import ExerciseScreen from './screens/ExerciseScreen';
 import TopicSelectionScreen from './screens/TopicSelectionScreen';
 import DynamicExerciseScreen from './screens/DynamicExerciseScreen';
+import FlashcardsScreen from './screens/FlashcardsScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -66,6 +67,11 @@ export default function App() {
           name="DynamicExercise"
           component={DynamicExerciseScreen}
           options={{ title: 'Practice Exercise' }}
+        />
+        <Stack.Screen
+          name="FlashcardsScreen"
+          component={FlashcardsScreen}
+          options={{ title: 'Flashcards' }}
         />
       </Stack.Navigator>
       <StatusBar style="light" />

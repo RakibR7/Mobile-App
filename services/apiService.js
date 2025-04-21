@@ -110,3 +110,44 @@ export const deleteConversation = async (id, tutor) => {
     throw error;
   }
 };
+
+// Get user performance data
+export const getPerformanceData = async (userId, tutor, topic, activityType) => {
+  try {
+    let url = `${API_BASE_URL}/api/performance?userId=${userId}`;
+    if (tutor) url += `&tutor=${tutor}`;
+    if (topic) url += `&topic=${topic}`;
+    if (activityType) url += `&activityType=${activityType}`;
+
+    const response = await fetch(url);
+
+    if (!response.ok) {
+      throw new Error('Failed to fetch performance data');
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error("Error fetching performance data:", error);
+    throw error;
+  }
+};
+
+// Update performance data
+export const updatePerformanceData = async (performanceData) => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/performance`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(performanceData)
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to update performance data');
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error("Error updating performance data:", error);
+    throw error;
+  }
+};

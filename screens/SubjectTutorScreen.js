@@ -1,6 +1,9 @@
-// screens/SubjectTutorScreen.js
+// screens/SubjectTutorScreen.js - Updated with Progress button
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, RefreshControl, ActivityIndicator } from 'react-native';
+import {
+  View, Text, StyleSheet, TouchableOpacity, ScrollView,
+  RefreshControl, ActivityIndicator
+} from 'react-native';
 import { createConversation } from '../services/apiService';
 import { syncConversations } from '../services/syncService';
 
@@ -93,6 +96,14 @@ export default function SubjectTutorScreen({ navigation }) {
     >
       <Text style={styles.title}>Select a Subject Tutor</Text>
 
+      {/* Progress Button */}
+      <TouchableOpacity
+        style={styles.progressButton}
+        onPress={() => navigation.navigate('Progress')}
+      >
+        <Text style={styles.progressButtonText}>View Learning Progress</Text>
+      </TouchableOpacity>
+
       {loading && (
         <View style={styles.loadingOverlay}>
           <ActivityIndicator size="large" color="#FFFFFF" />
@@ -165,8 +176,25 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: 'bold',
     color: '#FFFFFF',
-    marginBottom: 30,
+    marginBottom: 15,
     textAlign: 'center',
+  },
+  progressButton: {
+    backgroundColor: '#1976D2',
+    padding: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 2,
+    elevation: 4,
+  },
+  progressButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
   subjectButtons: {
     width: '100%',

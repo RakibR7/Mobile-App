@@ -4,19 +4,78 @@ import {
   View, Text, StyleSheet, TextInput, TouchableOpacity,
   ScrollView, ActivityIndicator, Alert
 } from 'react-native';
+import { useUser } from '../context/UserContext';
+import { updatePerformanceData } from '../services/apiService';
 
 export default function DynamicExerciseScreen({ route, navigation }) {
   const { tutor, topic, topicName } = route.params;
+  const { userId } = useUser();
+
   const [questions, setQuestions] = useState([]);
   const [answers, setAnswers] = useState({});
   const [feedback, setFeedback] = useState({});
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+  const [sessionStartTime, setSessionStartTime] = useState(null);
+  const [sessionStats, setSessionStats] = useState({
+    questionsAttempted: 0,
+    correctAnswers: 0,
+    timeSpent: 0
+  });
 
   useEffect(() => {
     generateQuestions();
+    setSessionStartTime(Date.now());
+
+    // Cleanup function to save session data when leaving the screen
+    return () => {
+      saveSession();
+    };
   }, []);
+
+  const saveSession = async () => {
+    if (sessionStats.questionsAttempted === 0 || !userId) return;
+
+    try {
+      const timeSpent = Math.floor((Date.now() - sessionStartTime) / 1000);
+
+      // Prepare card data for each question
+      const cardsData = questions.map(question => {
+        const questionId = String(question.id);
+        const userAnswer = answers[questionId] || '';
+        const fbk = feedback[questionId] || {};
+
+        return {
+          cardId: questionId,
+          question: question.question,
+          answer: userAnswer,
+          attempts: fbk.evaluated ? 1 : 0,
+          correctAttempts: fbk.correct ? 1 : 0
+        };
+      }).filter(card => card.attempts > 0);
+
+      // Prepare session data
+      const sessionData = {
+        cardsStudied: sessionStats.questionsAttempted,
+        correctAnswers: sessionStats.correctAnswers,
+        timeSpent
+      };
+
+      // Send data to server
+      await updatePerformanceData({
+        userId,
+        tutor,
+        topic: topic || topicName,
+        activityType: 'quiz',
+        sessionData,
+        cardsData
+      });
+
+    } catch (error) {
+      console.error('Error saving session data:', error);
+    }
+  };
 
   const generateQuestions = async () => {
     setLoading(true);
@@ -124,11 +183,22 @@ export default function DynamicExerciseScreen({ route, navigation }) {
         };
       }
 
+      // Add 'evaluated' flag to the feedback
+      evaluation.evaluated = true;
+
       // Update feedback state with the evaluation
       setFeedback({
         ...feedback,
         [currentQuestion.id]: evaluation
       });
+
+      // Update session stats
+      setSessionStats(prev => ({
+        ...prev,
+        questionsAttempted: prev.questionsAttempted + 1,
+        correctAnswers: evaluation.correct ? prev.correctAnswers + 1 : prev.correctAnswers
+      }));
+
     } catch (error) {
       console.error('Error evaluating answer:', error);
       Alert.alert('Error', 'Failed to evaluate your answer. Please try again.');
@@ -141,28 +211,60 @@ export default function DynamicExerciseScreen({ route, navigation }) {
     if (currentQuestionIndex < questions.length - 1) {
       setCurrentQuestionIndex(currentQuestionIndex + 1);
     } else {
-      // All questions answered
+      // All questions answered - show session summary
+      const timeSpent = Math.floor((Date.now() - sessionStartTime) / 1000);
+      const minutes = Math.floor(timeSpent / 60);
+      const seconds = timeSpent % 60;
+
       Alert.alert(
-        'Exercise Complete',
-        'You have completed all the questions. Would you like to try more questions on this topic?',
+        'Quiz Complete',
+        `You've completed all questions!\n\nScore: ${sessionStats.correctAnswers}/${sessionStats.questionsAttempted}\nTime: ${minutes}m ${seconds}s`,
         [
           {
-            text: 'New Questions',
+            text: 'New Quiz',
             onPress: () => {
+              saveSession();
               setAnswers({});
               setFeedback({});
               setCurrentQuestionIndex(0);
+              setSessionStartTime(Date.now());
+              setSessionStats({
+                questionsAttempted: 0,
+                correctAnswers: 0,
+                timeSpent: 0
+              });
               generateQuestions();
             }
           },
           {
+            text: 'View Progress',
+            onPress: () => {
+              saveSession();
+              navigation.navigate('QuizHistory', {
+                tutor,
+                topic: topic || topicName
+              });
+            }
+          },
+          {
             text: 'Done',
-            onPress: () => navigation.goBack(),
+            onPress: () => {
+              saveSession();
+              navigation.goBack();
+            },
             style: 'cancel'
           }
         ]
       );
     }
+  };
+
+  const viewProgress = () => {
+    saveSession();
+    navigation.navigate('QuizHistory', {
+      tutor,
+      topic: topic || topicName
+    });
   };
 
   if (loading) {
@@ -179,8 +281,17 @@ export default function DynamicExerciseScreen({ route, navigation }) {
 
   return (
     <ScrollView style={styles.container}>
-      <Text style={styles.topic}>{topicName}</Text>
-      <Text style={styles.progress}>Question {currentQuestionIndex + 1} of {questions.length}</Text>
+      <View style={styles.headerContainer}>
+        <Text style={styles.topic}>{topicName}</Text>
+        <Text style={styles.progress}>Question {currentQuestionIndex + 1} of {questions.length}</Text>
+
+        <View style={styles.statsContainer}>
+          <Text style={styles.statsText}>Quiz Progress:</Text>
+          <Text style={styles.statsDetail}>
+            Attempted: {sessionStats.questionsAttempted} | Correct: {sessionStats.correctAnswers}
+          </Text>
+        </View>
+      </View>
 
       <View style={styles.questionContainer}>
         <Text style={styles.question}>{currentQuestion?.question}</Text>
@@ -233,6 +344,13 @@ export default function DynamicExerciseScreen({ route, navigation }) {
             </TouchableOpacity>
           )}
         </View>
+
+        <TouchableOpacity
+          style={styles.progressButton}
+          onPress={viewProgress}
+        >
+          <Text style={styles.progressButtonText}>View Quiz History</Text>
+        </TouchableOpacity>
       </View>
     </ScrollView>
   );
@@ -243,6 +361,9 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 20,
     backgroundColor: '#f5f5f5',
+  },
+  headerContainer: {
+    marginBottom: 20,
   },
   loadingContainer: {
     flex: 1,
@@ -265,8 +386,24 @@ const styles = StyleSheet.create({
   progress: {
     fontSize: 16,
     textAlign: 'center',
-    marginBottom: 20,
+    marginBottom: 10,
     color: '#666',
+  },
+  statsContainer: {
+    backgroundColor: 'rgba(76, 175, 80, 0.1)',
+    borderRadius: 8,
+    padding: 10,
+    marginBottom: 10,
+    alignItems: 'center',
+  },
+  statsText: {
+    fontWeight: 'bold',
+    color: '#4CAF50',
+    marginBottom: 5,
+  },
+  statsDetail: {
+    color: '#333',
+    fontSize: 14,
   },
   questionContainer: {
     backgroundColor: '#fff',
@@ -332,6 +469,7 @@ const styles = StyleSheet.create({
   },
   buttonContainer: {
     marginTop: 20,
+    marginBottom: 10,
   },
   submitButton: {
     backgroundColor: '#4CAF50',
@@ -348,6 +486,18 @@ const styles = StyleSheet.create({
   buttonText: {
     color: '#fff',
     fontSize: 16,
+    fontWeight: '500',
+  },
+  progressButton: {
+    marginTop: 10,
+    backgroundColor: '#9C27B0',
+    padding: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  progressButtonText: {
+    color: '#fff',
+    fontSize: 14,
     fontWeight: '500',
   }
 });

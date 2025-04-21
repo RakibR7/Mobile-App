@@ -9,6 +9,8 @@ import ChatScreen from './screens/ChatScreen';
 import AboutScreen from './screens/AboutScreen';
 import SubjectTutorScreen from './screens/SubjectTutorScreen';
 import ExerciseScreen from './screens/ExerciseScreen';
+import TopicSelectionScreen from './screens/TopicSelectionScreen';
+import DynamicExerciseScreen from './screens/DynamicExerciseScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -54,6 +56,16 @@ export default function App() {
           name="Exercise"
           component={ExerciseScreen}
           options={{ title: 'Practice Exercises' }}
+        />
+        <Stack.Screen
+          name="TopicSelection"
+          component={TopicSelectionScreen}
+          options={{ title: 'Select a Topic' }}
+        />
+        <Stack.Screen
+          name="DynamicExercise"
+          component={DynamicExerciseScreen}
+          options={{ title: 'Practice Exercise' }}
         />
       </Stack.Navigator>
       <StatusBar style="light" />

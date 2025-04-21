@@ -103,25 +103,29 @@ export default function SubjectTutorScreen({ navigation }) {
       <View style={styles.subjectButtons}>
         {subjects.map((subject) => (
           <View key={subject.id} style={styles.subjectSection}>
-            <TouchableOpacity
-              style={styles.button}
-              onPress={() => handleSelectSubject(subject)}
-              disabled={loading}
-            >
-              <Text style={styles.buttonText}>{subject.name}</Text>
-              <Text style={styles.buttonSubtext}>Start New Conversation</Text>
-            </TouchableOpacity>
+            <Text style={styles.subjectTitle}>{subject.name}</Text>
 
-            <TouchableOpacity
-              style={styles.exerciseButton}
-              onPress={() => navigation.navigate('Exercise', {
-                tutor: subject.id,
-                exerciseType: 'practice'
-              })}
-              disabled={loading}
-            >
-              <Text style={styles.buttonText}>Practice Exercises</Text>
-            </TouchableOpacity>
+            <View style={styles.buttonRow}>
+              <TouchableOpacity
+                style={[styles.button, styles.chatButton]}
+                onPress={() => handleSelectSubject(subject)}
+                disabled={loading}
+              >
+                <Text style={styles.buttonText}>Chat</Text>
+                <Text style={styles.buttonSubtext}>Ask Questions</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.button, styles.exerciseButton]}
+                onPress={() => navigation.navigate('TopicSelection', {
+                  tutor: subject.id
+                })}
+                disabled={loading}
+              >
+                <Text style={styles.buttonText}>Practice</Text>
+                <Text style={styles.buttonSubtext}>Test Your Knowledge</Text>
+              </TouchableOpacity>
+            </View>
 
             {/* Display recent conversations for this subject */}
             {recentConversations[subject.id]?.length > 0 && (
@@ -169,22 +173,33 @@ const styles = StyleSheet.create({
   },
   subjectSection: {
     marginBottom: 30,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: 10,
+    padding: 15,
+  },
+  subjectTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+    marginBottom: 15,
+    textAlign: 'center',
+  },
+  buttonRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 10,
   },
   button: {
-    backgroundColor: '#4CAF50',
     padding: 15,
-    borderRadius: 5,
-    width: '100%',
+    borderRadius: 8,
+    width: '48%',
     alignItems: 'center',
-    marginBottom: 10,
+  },
+  chatButton: {
+    backgroundColor: '#4CAF50',
   },
   exerciseButton: {
     backgroundColor: '#FF9800',
-    padding: 15,
-    borderRadius: 5,
-    width: '100%',
-    alignItems: 'center',
-    marginBottom: 10,
   },
   buttonText: {
     color: '#FFFFFF',
@@ -193,8 +208,9 @@ const styles = StyleSheet.create({
   },
   buttonSubtext: {
     color: '#FFFFFF',
-    fontSize: 14,
+    fontSize: 12,
     opacity: 0.8,
+    marginTop: 4,
   },
   recentConversations: {
     backgroundColor: 'rgba(255, 255, 255, 0.2)',

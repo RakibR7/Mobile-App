@@ -1,4 +1,4 @@
-// screens/SubjectTutorScreen.js - Updated with Progress button
+// screens/SubjectTutorScreen.js
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView,
@@ -96,14 +96,6 @@ export default function SubjectTutorScreen({ navigation }) {
     >
       <Text style={styles.title}>Select a Subject Tutor</Text>
 
-      {/* Progress Button */}
-      <TouchableOpacity
-        style={styles.progressButton}
-        onPress={() => navigation.navigate('Progress')}
-      >
-        <Text style={styles.progressButtonText}>View Learning Progress</Text>
-      </TouchableOpacity>
-
       {loading && (
         <View style={styles.loadingOverlay}>
           <ActivityIndicator size="large" color="#FFFFFF" />
@@ -137,6 +129,18 @@ export default function SubjectTutorScreen({ navigation }) {
                 <Text style={styles.buttonSubtext}>Test Your Knowledge</Text>
               </TouchableOpacity>
             </View>
+
+            {/* Add Progress button */}
+            <TouchableOpacity
+              style={[styles.button, styles.progressButton]}
+              onPress={() => navigation.navigate('SubtopicProgress', {
+                tutor: subject.id
+              })}
+              disabled={loading}
+            >
+              <Text style={styles.buttonText}>Progress</Text>
+              <Text style={styles.buttonSubtext}>View Topic Mastery</Text>
+            </TouchableOpacity>
 
             {/* Display recent conversations for this subject */}
             {recentConversations[subject.id]?.length > 0 && (
@@ -179,23 +183,6 @@ const styles = StyleSheet.create({
     marginBottom: 15,
     textAlign: 'center',
   },
-  progressButton: {
-    backgroundColor: '#1976D2',
-    padding: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginBottom: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 2,
-    elevation: 4,
-  },
-  progressButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
   subjectButtons: {
     width: '100%',
   },
@@ -220,14 +207,20 @@ const styles = StyleSheet.create({
   button: {
     padding: 15,
     borderRadius: 8,
-    width: '48%',
     alignItems: 'center',
   },
   chatButton: {
     backgroundColor: '#4CAF50',
+    width: '48%',
   },
   exerciseButton: {
     backgroundColor: '#FF9800',
+    width: '48%',
+  },
+  progressButton: {
+    backgroundColor: '#2196F3',
+    width: '100%',
+    marginBottom: 10,
   },
   buttonText: {
     color: '#FFFFFF',

@@ -34,48 +34,64 @@ export default function DynamicExerciseScreen({ route, navigation }) {
     };
   }, []);
 
-  const saveSession = async () => {
-    if (sessionStats.questionsAttempted === 0 || !userId) return;
+  // In DynamicExerciseScreen.js - Replace the saveSession function with this:
+const saveSession = async () => {
+  if (sessionStats.questionsAttempted === 0 || !userId) return;
 
-    try {
-      const timeSpent = Math.floor((Date.now() - sessionStartTime) / 1000);
+  try {
+    const timeSpent = Math.floor((Date.now() - sessionStartTime) / 1000);
 
-      // Prepare card data for each question
-      const cardsData = questions.map(question => {
-        const questionId = String(question.id);
-        const userAnswer = answers[questionId] || '';
-        const fbk = feedback[questionId] || {};
+    // Prepare card data for each question with subtopic
+    const cardsData = questions.map(question => {
+      const questionId = String(question.id);
+      const userAnswer = answers[questionId] || '';
+      const fbk = feedback[questionId] || {};
 
-        return {
-          cardId: questionId,
-          question: question.question,
-          answer: userAnswer,
-          attempts: fbk.evaluated ? 1 : 0,
-          correctAttempts: fbk.correct ? 1 : 0
-        };
-      }).filter(card => card.attempts > 0);
-
-      // Prepare session data
-      const sessionData = {
-        cardsStudied: sessionStats.questionsAttempted,
-        correctAnswers: sessionStats.correctAnswers,
-        timeSpent
+      return {
+        cardId: questionId,
+        question: question.question,
+        answer: userAnswer,
+        subtopic: topic || 'general', // Use topic as subtopic
+        attempts: fbk.evaluated ? 1 : 0,
+        correctAttempts: fbk.correct ? 1 : 0
       };
+    }).filter(card => card.attempts > 0);
 
-      // Send data to server
-      await updatePerformanceData({
-        userId,
-        tutor,
-        topic: topic || topicName,
-        activityType: 'quiz',
-        sessionData,
-        cardsData
-      });
+    // Prepare session data
+    const sessionData = {
+      cardsStudied: sessionStats.questionsAttempted,
+      correctAnswers: sessionStats.correctAnswers,
+      timeSpent,
+      subtopic: topic || 'general' // Use topic as subtopic
+    };
 
-    } catch (error) {
-      console.error('Error saving session data:', error);
-    }
-  };
+    console.log("Saving quiz performance:", {
+      userId,
+      tutor,
+      topic: topicName || tutor,
+      subtopic: topic || 'general',
+      activityType: 'quiz',
+      sessionData,
+      cardsData: cardsData.length
+    });
+
+    // Send data to server
+    await updatePerformanceData({
+      userId,
+      tutor,
+      topic: topicName || tutor,
+      subtopic: topic || 'general',
+      activityType: 'quiz',
+      sessionData,
+      cardsData
+    });
+
+    console.log("Quiz session saved successfully");
+
+  } catch (error) {
+    console.error('Error saving session data:', error);
+  }
+};
 
   const generateQuestions = async () => {
     setLoading(true);

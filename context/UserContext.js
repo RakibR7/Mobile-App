@@ -1,8 +1,9 @@
-// context/UserContext.js
-import React, { createContext, useState, useContext, useEffect } from 'react';
+// Update UserContext.js
+import React, { createContext, useState, useEffect, useContext } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as uuid from 'uuid';
+import { v4 as uuidv4 } from 'uuid';
 
+// Create context
 const UserContext = createContext();
 
 export const UserProvider = ({ children }) => {
@@ -10,28 +11,26 @@ export const UserProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Load or create user ID
     const loadUserId = async () => {
       try {
         // Try to load existing user ID
-        let storedUserId = await AsyncStorage.getItem('userId');
+        let storedId = await AsyncStorage.getItem('user_id');
 
-        // If no user ID exists, create a new one
-        if (!storedUserId) {
-          storedUserId = uuid.v4();
-          await AsyncStorage.setItem('userId', storedUserId);
+        if (!storedId) {
+          // Generate new ID if none exists
+          storedId = uuidv4();
+          await AsyncStorage.setItem('user_id', storedId);
+          console.log('Created new user ID:', storedId);
+        } else {
+          console.log('Loaded existing user ID:', storedId);
         }
 
-        setUserId(storedUserId);
+        setUserId(storedId);
       } catch (error) {
-        console.error('Error loading user ID:', error);
-        // Fallback to generate a new ID if there's an error
-        const newUserId = uuid.v4();
-        setUserId(newUserId);
-        try {
-          await AsyncStorage.setItem('userId', newUserId);
-        } catch (storageError) {
-          console.error('Error storing user ID:', storageError);
-        }
+        console.error('Error managing user ID:', error);
+        // Fallback to in-memory ID if storage fails
+        setUserId(uuidv4());
       } finally {
         setLoading(false);
       }
@@ -40,6 +39,7 @@ export const UserProvider = ({ children }) => {
     loadUserId();
   }, []);
 
+  // Return provider with value
   return (
     <UserContext.Provider value={{ userId, loading }}>
       {children}
@@ -47,6 +47,7 @@ export const UserProvider = ({ children }) => {
   );
 };
 
+// Hook to use the context
 export const useUser = () => {
   const context = useContext(UserContext);
   if (!context) {

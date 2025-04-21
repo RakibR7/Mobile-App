@@ -38,42 +38,58 @@ export default function FlashcardsScreen({ route, navigation }) {
     };
   }, []);
 
-  const saveSession = async () => {
-    if (sessionStats.cardsStudied === 0 || !userId) return;
+  // In FlashcardsScreen.js - Replace the saveSession function with this:
+const saveSession = async () => {
+  if (sessionStats.cardsStudied === 0 || !userId) return;
 
-    try {
-      const timeSpent = Math.floor((Date.now() - sessionStartTime) / 1000);
+  try {
+    const timeSpent = Math.floor((Date.now() - sessionStartTime) / 1000);
 
-      // Prepare cards data
-      const cardsData = flashcards.map(card => ({
-        cardId: card.id.toString(),
-        question: card.question,
-        answer: card.answer,
-        attempts: card.attempts || 0,
-        correctAttempts: card.correct || 0
-      })).filter(card => card.attempts > 0);
+    // Prepare cards data with subtopic
+    const cardsData = flashcards.map(card => ({
+      cardId: card.id.toString(),
+      question: card.question,
+      answer: card.answer,
+      subtopic: topic || 'general', // Use topic as subtopic
+      attempts: card.attempts || 0,
+      correctAttempts: card.correct || 0
+    })).filter(card => card.attempts > 0);
 
-      // Prepare session data
-      const sessionData = {
-        cardsStudied: sessionStats.cardsStudied,
-        correctAnswers: sessionStats.correctAnswers,
-        timeSpent
-      };
+    // Prepare session data
+    const sessionData = {
+      cardsStudied: sessionStats.cardsStudied,
+      correctAnswers: sessionStats.correctAnswers,
+      timeSpent,
+      subtopic: topic || 'general' // Use topic as subtopic
+    };
 
-      // Send data to server
-      await updatePerformanceData({
-        userId,
-        tutor,
-        topic: topic || topicName,
-        activityType: 'flashcard',
-        sessionData,
-        cardsData
-      });
+    console.log("Saving flashcard performance:", {
+      userId,
+      tutor,
+      topic: topicName || tutor,
+      subtopic: topic || 'general',
+      activityType: 'flashcard',
+      sessionData,
+      cardsData: cardsData.length
+    });
 
-    } catch (error) {
-      console.error('Error saving session data:', error);
-    }
-  };
+    // Send data to server
+    await updatePerformanceData({
+      userId,
+      tutor,
+      topic: topicName || tutor,
+      subtopic: topic || 'general',
+      activityType: 'flashcard',
+      sessionData,
+      cardsData
+    });
+
+    console.log("Flashcard session saved successfully");
+
+  } catch (error) {
+    console.error('Error saving session data:', error);
+  }
+};
 
   const generateFlashcards = async () => {
     setLoading(true);

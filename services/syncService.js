@@ -1,10 +1,10 @@
 // services/syncService.js
-import * as apiService from './apiService';
+import { getConversations } from '../services/apiService';
 
 export const syncConversations = async (tutor) => {
   try {
     // Fetch the latest conversations from the server
-    const conversations = await apiService.getConversations(tutor);
+    const conversations = await getConversations(tutor);
     return conversations;
   } catch (error) {
     console.error('Sync error:', error);

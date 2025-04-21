@@ -1,10 +1,17 @@
-// Update UserContext.js
+// context/UserContext.js - Simplified version without UUID dependency
 import React, { createContext, useState, useEffect, useContext } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { v4 as uuidv4 } from 'uuid';
 
 // Create context
 const UserContext = createContext();
+
+// Simple ID generator function
+const generateSimpleId = () => {
+  return 'user_' +
+    Math.random().toString(36).substring(2, 10) +
+    '_' +
+    Date.now().toString(36);
+};
 
 export const UserProvider = ({ children }) => {
   const [userId, setUserId] = useState(null);
@@ -19,7 +26,7 @@ export const UserProvider = ({ children }) => {
 
         if (!storedId) {
           // Generate new ID if none exists
-          storedId = uuidv4();
+          storedId = generateSimpleId();
           await AsyncStorage.setItem('user_id', storedId);
           console.log('Created new user ID:', storedId);
         } else {
@@ -30,7 +37,7 @@ export const UserProvider = ({ children }) => {
       } catch (error) {
         console.error('Error managing user ID:', error);
         // Fallback to in-memory ID if storage fails
-        setUserId(uuidv4());
+        setUserId(generateSimpleId());
       } finally {
         setLoading(false);
       }

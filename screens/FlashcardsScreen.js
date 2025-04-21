@@ -330,7 +330,7 @@ const saveSession = async () => {
     saveSession();
     navigation.navigate('FlashcardHistory', {
       tutor,
-      topic: topic || topicName
+      topic: topic || 'general'
     });
   };
 

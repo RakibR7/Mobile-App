@@ -15,6 +15,7 @@ import DynamicExerciseScreen from './screens/DynamicExerciseScreen';
 import FlashcardsScreen from './screens/FlashcardsScreen';
 import SubtopicProgressScreen from './screens/SubtopicProgressScreen';
 import QuizHistoryScreen from './screens/QuizHistoryScreen';
+import FlashcardHistoryScreen from './screens/FlashcardHistoryScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -86,6 +87,11 @@ export default function App() {
             name="QuizHistory"
             component={QuizHistoryScreen}
             options={{ title: 'Quiz History' }}
+          />
+          <Stack.Screen
+            name="FlashcardHistory"
+            component={FlashcardHistoryScreen}
+            options={{ title: 'Flashcard History' }}
           />
         </Stack.Navigator>
         <StatusBar style="light" />

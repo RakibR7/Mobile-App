@@ -3,8 +3,15 @@ import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { StatusBar } from 'expo-status-bar';
-import { UserProvider } from './context/UserContext';
+import { ActivityIndicator, View } from 'react-native';
 
+// Auth Context
+import { AuthProvider, useAuth } from './context/AuthContext';
+
+// Navigators
+import AuthNavigator from './navigation/AuthNavigator';
+
+// Screens
 import HomeScreen from './screens/HomeScreen';
 import ChatScreen from './screens/ChatScreen';
 import AboutScreen from './screens/AboutScreen';
@@ -19,10 +26,23 @@ import FlashcardHistoryScreen from './screens/FlashcardHistoryScreen';
 
 const Stack = createNativeStackNavigator();
 
-export default function App() {
+// Main navigation component that checks auth state
+const AppNavigator = () => {
+  const { user, loading } = useAuth();
+
+  // Show loading screen while checking authentication
+  if (loading) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator size="large" color="#4CAF50" />
+      </View>
+    );
+  }
+
   return (
-    <UserProvider>
-      <NavigationContainer>
+    <NavigationContainer>
+      {user ? (
+        // User is signed in - show main app screens
         <Stack.Navigator
           initialRouteName="Home"
           screenOptions={{
@@ -94,8 +114,19 @@ export default function App() {
             options={{ title: 'Flashcard History' }}
           />
         </Stack.Navigator>
-        <StatusBar style="light" />
-      </NavigationContainer>
-    </UserProvider>
+      ) : (
+        <AuthNavigator />
+      )}
+    </NavigationContainer>
+  );
+};
+
+// Wrap the app with auth provider
+export default function App() {
+  return (
+    <AuthProvider>
+      <AppNavigator />
+      <StatusBar style="light" />
+    </AuthProvider>
   );
 }

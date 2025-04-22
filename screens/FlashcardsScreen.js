@@ -2,10 +2,10 @@
 import React, { useState, useRef, useEffect } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, Animated,
-  ActivityIndicator, Dimensions, Alert
+  ActivityIndicator, Dimensions, Alert, ScrollView
 } from 'react-native';
 import { useUser } from '../context/UserContext';
-import { updatePerformanceData } from '../services/apiService';
+import { updatePerformanceData, getPerformanceData } from '../services/apiService';
 
 const { width } = Dimensions.get('window');
 const CARD_WIDTH = width * 0.85;
@@ -17,8 +17,10 @@ export default function FlashcardsScreen({ route, navigation }) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [showAnswer, setShowAnswer] = useState(false);
   const [flashcards, setFlashcards] = useState([]);
+  const [savedFlashcards, setSavedFlashcards] = useState([]);
   const [loading, setLoading] = useState(true);
   const [sessionStartTime, setSessionStartTime] = useState(null);
+  const [showRevisionOptions, setShowRevisionOptions] = useState(true);
   const [sessionStats, setSessionStats] = useState({
     cardsStudied: 0,
     correctAnswers: 0,
@@ -29,67 +31,61 @@ export default function FlashcardsScreen({ route, navigation }) {
   const flipAnimation = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    generateFlashcards();
+    // Fetch saved flashcards on mount
+    fetchSavedFlashcards();
     setSessionStartTime(Date.now());
 
     // Cleanup when leaving the screen
     return () => {
-      saveSession();
+      if (flashcards.length > 0 && sessionStats.cardsStudied > 0) {
+        saveSession();
+      }
     };
   }, []);
 
-  // In FlashcardsScreen.js - Replace the saveSession function with this:
-const saveSession = async () => {
-  if (sessionStats.cardsStudied === 0 || !userId) return;
+  const fetchSavedFlashcards = async () => {
+    try {
+      setLoading(true);
+      // Get previously studied flashcards from the performance data
+      if (userId) {
+        const performanceData = await getPerformanceData(
+          userId,
+          tutor,
+          topicName || tutor,
+          'flashcard'
+        );
 
-  try {
-    const timeSpent = Math.floor((Date.now() - sessionStartTime) / 1000);
+        // Extract unique flashcards from the performance data
+        const savedCards = [];
+        const uniqueQuestions = new Set();
 
-    // Prepare cards data with subtopic
-    const cardsData = flashcards.map(card => ({
-      cardId: card.id.toString(),
-      question: card.question,
-      answer: card.answer,
-      subtopic: topic || 'general', // Use topic as subtopic
-      attempts: card.attempts || 0,
-      correctAttempts: card.correct || 0
-    })).filter(card => card.attempts > 0);
+        performanceData.forEach(session => {
+          if (session.cards && session.cards.length > 0) {
+            session.cards.forEach(card => {
+              // Only add cards for this specific topic if specified
+              if ((!topic || card.subtopic === topic) && !uniqueQuestions.has(card.question)) {
+                uniqueQuestions.add(card.question);
+                savedCards.push({
+                  id: card.cardId || savedCards.length + 1,
+                  question: card.question,
+                  answer: card.answer,
+                  attempts: card.attempts || 0,
+                  correct: card.correctAttempts || 0,
+                  lastResult: null
+                });
+              }
+            });
+          }
+        });
 
-    // Prepare session data
-    const sessionData = {
-      cardsStudied: sessionStats.cardsStudied,
-      correctAnswers: sessionStats.correctAnswers,
-      timeSpent,
-      subtopic: topic || 'general' // Use topic as subtopic
-    };
-
-    console.log("Saving flashcard performance:", {
-      userId,
-      tutor,
-      topic: topicName || tutor,
-      subtopic: topic || 'general',
-      activityType: 'flashcard',
-      sessionData,
-      cardsData: cardsData.length
-    });
-
-    // Send data to server
-    await updatePerformanceData({
-      userId,
-      tutor,
-      topic: topicName || tutor,
-      subtopic: topic || 'general',
-      activityType: 'flashcard',
-      sessionData,
-      cardsData
-    });
-
-    console.log("Flashcard session saved successfully");
-
-  } catch (error) {
-    console.error('Error saving session data:', error);
-  }
-};
+        setSavedFlashcards(savedCards);
+      }
+    } catch (error) {
+      console.error('Error fetching saved flashcards:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const generateFlashcards = async () => {
     setLoading(true);
@@ -163,22 +159,110 @@ const saveSession = async () => {
         ];
       }
 
+      setShowRevisionOptions(false);
       setFlashcards(parsedFlashcards);
+      setCurrentIndex(0);
+      setSessionStats({
+        cardsStudied: 0,
+        correctAnswers: 0,
+        incorrectAnswers: 0,
+        timeSpent: 0
+      });
+      setSessionStartTime(Date.now());
     } catch (error) {
       console.error('Error generating flashcards:', error);
-      // Set some default flashcards as fallback
-      setFlashcards([
-        {
-          id: 1,
-          question: "Loading flashcards failed",
-          answer: "Please try again later",
-          attempts: 0,
-          correct: 0,
-          lastResult: null
-        }
-      ]);
+      Alert.alert('Error', 'Failed to generate flashcards. Please try again.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const startRevision = () => {
+    if (savedFlashcards.length === 0) {
+      Alert.alert(
+        'No Cards to Review',
+        'You haven\'t studied any flashcards for this topic yet. Would you like to generate new flashcards?',
+        [
+          {
+            text: 'Generate New Cards',
+            onPress: generateFlashcards
+          },
+          {
+            text: 'Cancel',
+            style: 'cancel'
+          }
+        ]
+      );
+      return;
+    }
+
+    setShowRevisionOptions(false);
+    setFlashcards(savedFlashcards);
+    setCurrentIndex(0);
+    setSessionStats({
+      cardsStudied: 0,
+      correctAnswers: 0,
+      incorrectAnswers: 0,
+      timeSpent: 0
+    });
+    setSessionStartTime(Date.now());
+  };
+
+  const saveSession = async () => {
+    if (sessionStats.cardsStudied === 0 || !userId) return;
+
+    try {
+      const timeSpent = Math.floor((Date.now() - sessionStartTime) / 1000);
+
+      // Prepare cards data with subtopic
+      const cardsData = flashcards.map(card => {
+        // Only include cards that were studied this session
+        if (card.lastResult !== null) {
+          return {
+            cardId: card.id.toString(),
+            question: card.question,
+            answer: card.answer,
+            subtopic: topic || 'general', // Use topic as subtopic
+            attempts: card.attempts || 0,
+            correctAttempts: card.correct || 0
+          };
+        }
+        return null;
+      }).filter(Boolean); // Remove null entries
+
+      // Prepare session data
+      const sessionData = {
+        cardsStudied: sessionStats.cardsStudied,
+        correctAnswers: sessionStats.correctAnswers,
+        timeSpent,
+        subtopic: topic || 'general' // Use topic as subtopic
+      };
+
+      console.log("Saving flashcard performance:", {
+        userId,
+        tutor,
+        topic: topicName || tutor,
+        subtopic: topic || 'general',
+        activityType: 'flashcard',
+        sessionData,
+        cardsData: cardsData.length
+      });
+
+      // Send data to server
+      await updatePerformanceData({
+        userId,
+        tutor,
+        topic: topicName || tutor,
+        subtopic: topic || 'general',
+        activityType: 'flashcard',
+        sessionData,
+        cardsData
+      });
+
+      console.log("Flashcard session saved successfully");
+
+    } catch (error) {
+      console.error('Error saving session data:', error);
     }
   };
 
@@ -251,8 +335,7 @@ const saveSession = async () => {
                 incorrectAnswers: 0,
                 timeSpent: 0
               });
-              generateFlashcards();
-              setCurrentIndex(0);
+              setShowRevisionOptions(true);
             }
           },
           {
@@ -338,8 +421,74 @@ const saveSession = async () => {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#4CAF50" />
-        <Text style={styles.loadingText}>Creating flashcards...</Text>
+        <Text style={styles.loadingText}>
+          {savedFlashcards.length > 0
+            ? "Loading your flashcards..."
+            : "Creating flashcards..."}
+        </Text>
       </View>
+    );
+  }
+
+  if (showRevisionOptions) {
+    return (
+      <ScrollView style={styles.container}>
+        <View style={styles.optionsContainer}>
+          <Text style={styles.title}>
+            {topicName || tutor} Flashcards
+          </Text>
+
+          <Text style={styles.subtitle}>
+            Choose your study mode:
+          </Text>
+
+          <TouchableOpacity
+            style={styles.optionButton}
+            onPress={generateFlashcards}
+          >
+            <Text style={styles.optionButtonText}>Study New Cards</Text>
+            <Text style={styles.optionDescription}>
+              Generate a new set of flashcards on this topic
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[
+              styles.optionButton,
+              savedFlashcards.length === 0 ? styles.disabledButton : null
+            ]}
+            onPress={startRevision}
+            disabled={savedFlashcards.length === 0}
+          >
+            <Text style={styles.optionButtonText}>
+              Review Previous Cards
+            </Text>
+            <Text style={styles.optionDescription}>
+              {savedFlashcards.length > 0
+                ? `Practice with ${savedFlashcards.length} cards you've already studied`
+                : "You haven't studied any cards on this topic yet"}
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.progressButton}
+            onPress={viewProgress}
+          >
+            <Text style={styles.progressButtonText}>
+              View Study Progress
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => navigation.goBack()}
+          >
+            <Text style={styles.backButtonText}>
+              Back to Topics
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
     );
   }
 
@@ -420,8 +569,14 @@ const saveSession = async () => {
       </View>
 
       <View style={styles.bottomButtons}>
-        <TouchableOpacity style={styles.actionButton} onPress={generateFlashcards}>
-          <Text style={styles.actionButtonText}>New Cards</Text>
+        <TouchableOpacity
+          style={styles.actionButton}
+          onPress={() => {
+            saveSession();
+            setShowRevisionOptions(true);
+          }}
+        >
+          <Text style={styles.actionButtonText}>Study Options</Text>
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.actionButton} onPress={viewProgress}>
@@ -432,18 +587,16 @@ const saveSession = async () => {
   );
 }
 
-// screens/FlashcardsScreen.js (continued - completing the styles)
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: 20,
     backgroundColor: '#F0F8FF',
   },
   headerContainer: {
     width: '100%',
     alignItems: 'center',
+    padding: 20,
+    paddingBottom: 10,
   },
   loadingContainer: {
     flex: 1,
@@ -461,6 +614,39 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginBottom: 10,
     color: '#333',
+    textAlign: 'center',
+  },
+  subtitle: {
+    fontSize: 18,
+    color: '#555',
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  optionsContainer: {
+    flex: 1,
+    padding: 20,
+    alignItems: 'center',
+  },
+  optionButton: {
+    backgroundColor: '#4CAF50',
+    borderRadius: 10,
+    padding: 20,
+    marginBottom: 20,
+    width: '100%',
+    alignItems: 'center',
+  },
+  disabledButton: {
+    backgroundColor: '#A5D6A7',
+  },
+  optionButtonText: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 5,
+  },
+  optionDescription: {
+    color: '#FFFFFF',
+    fontSize: 14,
     textAlign: 'center',
   },
   progress: {
@@ -490,7 +676,8 @@ const styles = StyleSheet.create({
     height: 200,
     alignItems: 'center',
     justifyContent: 'center',
-    marginVertical: 20,
+    margin: 20,
+    alignSelf: 'center',
   },
   card: {
     position: 'absolute',
@@ -528,6 +715,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 5,
     marginBottom: 15,
+    alignSelf: 'center',
   },
   flipButtonText: {
     color: '#FFFFFF',
@@ -535,9 +723,10 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   ratingContainer: {
-    width: '100%',
+    width: '90%',
     alignItems: 'center',
     marginBottom: 15,
+    alignSelf: 'center',
   },
   ratingLabel: {
     fontSize: 16,
@@ -569,8 +758,9 @@ const styles = StyleSheet.create({
   navigationButtons: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    width: '100%',
+    width: '90%',
     marginBottom: 15,
+    alignSelf: 'center',
   },
   navButton: {
     backgroundColor: '#9C27B0',
@@ -587,8 +777,9 @@ const styles = StyleSheet.create({
   bottomButtons: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    width: '100%',
-    marginBottom: 10,
+    width: '90%',
+    marginBottom: 20,
+    alignSelf: 'center',
   },
   actionButton: {
     backgroundColor: '#607D8B',
@@ -601,5 +792,33 @@ const styles = StyleSheet.create({
   actionButtonText: {
     color: '#FFFFFF',
     fontSize: 16,
+  },
+  progressButton: {
+    backgroundColor: '#2196F3',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 5,
+    marginTop: 10,
+    marginBottom: 20,
+    width: '100%',
+    alignItems: 'center',
+  },
+  progressButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  backButton: {
+    backgroundColor: '#FFA000',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 5,
+    width: '100%',
+    alignItems: 'center',
+  },
+  backButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '500',
   }
 });

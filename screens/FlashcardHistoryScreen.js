@@ -2,224 +2,109 @@
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, FlatList,
-  ActivityIndicator, Alert
+  ActivityIndicator
 } from 'react-native';
 import { useUser } from '../context/UserContext';
 import { getPerformanceData } from '../services/apiService';
-import { subjectsData } from '../data/SubjectsData';
 
 export default function FlashcardHistoryScreen({ route, navigation }) {
   const { tutor, topic } = route.params || {};
   const { userId } = useUser();
 
   const [loading, setLoading] = useState(true);
-  const [flashcardSets, setFlashcardSets] = useState([]);
-  const [selectedSet, setSelectedSet] = useState(null);
+  const [sessions, setSessions] = useState([]);
+  const [stats, setStats] = useState({
+    totalCards: 0,
+    totalCorrect: 0,
+    accuracy: 0,
+    totalTime: 0
+  });
 
   useEffect(() => {
-    fetchFlashcardHistory();
+    fetchHistory();
   }, []);
 
-  const fetchFlashcardHistory = async () => {
+  const fetchHistory = async () => {
     if (!userId) return;
 
     setLoading(true);
     try {
-      // Fetch flashcard history for this user/tutor/topic
-      const query = { userId, activityType: 'flashcard' };
-      if (tutor) query.tutor = tutor;
-      if (topic) query.topic = topic;
+      const data = await getPerformanceData(
+        userId,
+        tutor,
+        topic,
+        'flashcard'
+      );
 
-      console.log('Fetching flashcard history with query:', query);
+      setSessions(data);
 
-      const data = await getPerformanceData(userId, tutor, topic, 'flashcard');
-      console.log(`Found ${data.length} flashcard history records`);
+      // Calculate overall stats
+      let totalCards = 0;
+      let totalCorrect = 0;
+      let totalTime = 0;
 
-      // Group by subtopic for easier navigation
-      const groupedBySubtopic = {};
-
-      data.forEach(item => {
-        const subtopic = item.subtopic || 'general';
-        if (!groupedBySubtopic[subtopic]) {
-          groupedBySubtopic[subtopic] = [];
+      data.forEach(session => {
+        if (session.sessions) {
+          session.sessions.forEach(s => {
+            totalCards += s.cardsStudied || 0;
+            totalCorrect += s.correctAnswers || 0;
+            totalTime += s.timeSpent || 0;
+          });
         }
-        groupedBySubtopic[subtopic].push(item);
       });
 
-      // Convert to array format for FlatList
-      const formattedData = Object.keys(groupedBySubtopic).map(subtopic => {
-        const sets = groupedBySubtopic[subtopic];
-        const totalCards = sets.reduce((sum, set) => sum + set.cards.length, 0);
-        const correctCards = sets.reduce((sum, set) =>
-          sum + set.cards.reduce((total, card) => total + card.correctAttempts, 0), 0);
-
-        const attempts = sets.reduce((sum, set) =>
-          sum + set.cards.reduce((total, card) => total + card.attempts, 0), 0);
-
-        const successRate = attempts > 0 ? Math.round((correctCards / attempts) * 100) : 0;
-
-        // Find subtopic details
-        const subtopicInfo = findSubtopic(tutor, subtopic) || {
-          name: subtopic.charAt(0).toUpperCase() + subtopic.slice(1),
-          icon: '📚'
-        };
-
-        return {
-          subtopic,
-          name: subtopicInfo.name,
-          icon: subtopicInfo.icon,
-          sets,
-          totalCards,
-          correctCards,
-          attempts,
-          successRate,
-          lastStudied: sets.reduce((latest, set) => {
-            const setLatest = set.updatedAt ? new Date(set.updatedAt) : null;
-            return latest && setLatest ?
-              (latest > setLatest ? latest : setLatest) :
-              (latest || setLatest);
-          }, null)
-        };
+      setStats({
+        totalCards,
+        totalCorrect,
+        accuracy: totalCards > 0 ? Math.round((totalCorrect / totalCards) * 100) : 0,
+        totalTime
       });
 
-      // Sort by most recently studied
-      formattedData.sort((a, b) => {
-        if (!a.lastStudied) return 1;
-        if (!b.lastStudied) return -1;
-        return b.lastStudied - a.lastStudied;
-      });
-
-      setFlashcardSets(formattedData);
     } catch (error) {
       console.error('Error fetching flashcard history:', error);
-      Alert.alert('Error', 'Failed to load flashcard history. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
-  const formatDate = (date) => {
-    if (!date) return 'Never';
-
-    // If it's today, show time
-    const today = new Date();
-    const dateObj = new Date(date);
-
-    if (dateObj.toDateString() === today.toDateString()) {
-      return 'Today at ' + dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    }
-
-    // If it's yesterday
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
-    if (dateObj.toDateString() === yesterday.toDateString()) {
-      return 'Yesterday';
-    }
-
-    // Otherwise show date
-    return dateObj.toLocaleDateString();
+  const formatTime = (seconds) => {
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    return `${minutes}m ${remainingSeconds}s`;
   };
 
-  const findSubtopic = (tutorId, subtopicId) => {
-    const subject = subjectsData[tutorId];
-    if (!subject) return null;
-
-    return subject.subtopics.find(st => st.id === subtopicId) || null;
-  };
-
-  const handleReviewFlashcards = (subtopicData) => {
-    // Navigate to flashcard screen with existing cards from history
-    if (subtopicData.sets.length === 0 || subtopicData.sets[0].cards.length === 0) {
-      Alert.alert('No Cards', 'No flashcards found for this topic.');
-      return;
-    }
-
-    // Combine all cards from all sets
-    let allCards = [];
-    subtopicData.sets.forEach(set => {
-      const cards = set.cards.map(card => ({
-        id: card.cardId,
-        question: card.question,
-        answer: card.answer,
-        attempts: card.attempts || 0,
-        correct: card.correctAttempts || 0,
-        difficulty: card.difficulty || 3,
-        lastResult: null
-      }));
-      allCards = [...allCards, ...cards];
-    });
-
-    // Filter out duplicates by question
-    const uniqueCards = [];
-    const questionSet = new Set();
-
-    allCards.forEach(card => {
-      if (!questionSet.has(card.question)) {
-        questionSet.add(card.question);
-        uniqueCards.push(card);
-      }
-    });
-
-    // Sort by difficulty (hardest first)
-    uniqueCards.sort((a, b) => b.difficulty - a.difficulty);
-
-    // Navigate to flashcard screen with these cards
-    navigation.navigate('FlashcardsScreen', {
-      tutor,
-      topic: subtopicData.subtopic,
-      topicName: subtopicData.name,
-      existingCards: uniqueCards.slice(0, 10), // Limit to 10 cards
-      isReview: true
-    });
-  };
-
-  const handleStudyOptions = (subtopicData) => {
-    // Show options: review existing or create new
-    Alert.alert(
-      'Study Options',
-      `How would you like to study ${subtopicData.name}?`,
-      [
-        {
-          text: 'Review Existing Cards',
-          onPress: () => handleReviewFlashcards(subtopicData)
-        },
-        {
-          text: 'Generate New Cards',
-          onPress: () => navigation.navigate('FlashcardsScreen', {
-            tutor,
-            topic: subtopicData.subtopic,
-            topicName: subtopicData.name
-          })
-        },
-        {
-          text: 'Cancel',
-          style: 'cancel'
-        }
-      ]
-    );
+// screens/FlashcardHistoryScreen.js (continued)
+  const formatDate = (dateString) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#4CAF50" />
-        <Text style={styles.loadingText}>Loading flashcard history...</Text>
+        <Text style={styles.loadingText}>Loading history data...</Text>
       </View>
     );
   }
 
-  if (flashcardSets.length === 0) {
+  if (sessions.length === 0) {
     return (
       <View style={styles.emptyContainer}>
-        <Text style={styles.emptyTitle}>No Flashcard History</Text>
-        <Text style={styles.emptySubtitle}>
-          You haven't studied any flashcards yet for {topic ? `the ${topic} topic` : `this subject`}.
+        <Text style={styles.title}>Flashcard History</Text>
+        <Text style={styles.subtitle}>
+          Tutor: {tutor || 'All'}, Topic: {topic || 'All topics'}
         </Text>
+
+        <Text style={styles.emptyMessage}>
+          No flashcard history found for this topic.
+        </Text>
+
         <TouchableOpacity
-          style={styles.emptyButton}
-          onPress={() => navigation.navigate('TopicSelection', { tutor })}
+          style={styles.button}
+          onPress={() => navigation.goBack()}
         >
-          <Text style={styles.emptyButtonText}>Start Studying</Text>
+          <Text style={styles.buttonText}>Go Back</Text>
         </TouchableOpacity>
       </View>
     );
@@ -227,54 +112,102 @@ export default function FlashcardHistoryScreen({ route, navigation }) {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>
-        Flashcard History {topic ? `- ${topic}` : ''}
+      <Text style={styles.title}>Flashcard History</Text>
+      <Text style={styles.subtitle}>
+        {tutor ? `Tutor: ${tutor}` : 'All Tutors'},
+        {topic ? ` Topic: ${topic}` : ' All Topics'}
       </Text>
 
+      <View style={styles.statsCard}>
+        <Text style={styles.statsTitle}>Overall Statistics</Text>
+
+        <View style={styles.statRow}>
+          <View style={styles.stat}>
+            <Text style={styles.statValue}>{stats.totalCards}</Text>
+            <Text style={styles.statLabel}>Total Cards</Text>
+          </View>
+
+          <View style={styles.stat}>
+            <Text style={styles.statValue}>{stats.accuracy}%</Text>
+            <Text style={styles.statLabel}>Accuracy</Text>
+          </View>
+        </View>
+
+        <View style={styles.statRow}>
+          <View style={styles.stat}>
+            <Text style={styles.statValue}>{stats.totalCorrect}</Text>
+            <Text style={styles.statLabel}>Correct</Text>
+          </View>
+
+          <View style={styles.stat}>
+            <Text style={styles.statValue}>{formatTime(stats.totalTime)}</Text>
+            <Text style={styles.statLabel}>Study Time</Text>
+          </View>
+        </View>
+      </View>
+
+      <Text style={styles.sectionTitle}>Recent Sessions</Text>
+
       <FlatList
-        data={flashcardSets}
-        keyExtractor={(item) => item.subtopic}
-        contentContainerStyle={styles.list}
-        renderItem={({ item }) => (
-          <TouchableOpacity
-            style={styles.card}
-            onPress={() => handleStudyOptions(item)}
-          >
-            <View style={styles.cardHeader}>
-              <Text style={styles.cardIcon}>{item.icon}</Text>
-              <Text style={styles.cardTitle}>{item.name}</Text>
-              <View style={styles.cardBadge}>
-                <Text style={styles.cardBadgeText}>{item.successRate}%</Text>
+        data={sessions}
+        keyExtractor={(item, index) => item._id || index.toString()}
+        renderItem={({ item }) => {
+          // Calculate session stats
+          let sessionCards = 0;
+          let sessionCorrect = 0;
+          let sessionTime = 0;
+
+          if (item.sessions && item.sessions.length > 0) {
+            item.sessions.forEach(s => {
+              sessionCards += s.cardsStudied || 0;
+              sessionCorrect += s.correctAnswers || 0;
+              sessionTime += s.timeSpent || 0;
+            });
+          }
+
+          const accuracy = sessionCards > 0 ? Math.round((sessionCorrect / sessionCards) * 100) : 0;
+
+          return (
+            <View style={styles.sessionCard}>
+              <Text style={styles.sessionDate}>
+                {formatDate(item.createdAt || new Date())}
+              </Text>
+              <Text style={styles.sessionTopic}>
+                {item.topic || 'Unknown Topic'}
+              </Text>
+
+              <View style={styles.sessionStats}>
+                <View style={styles.sessionStat}>
+                  <Text style={styles.sessionStatValue}>{sessionCards}</Text>
+                  <Text style={styles.sessionStatLabel}>Cards</Text>
+                </View>
+
+                <View style={styles.sessionStat}>
+                  <Text style={styles.sessionStatValue}>{sessionCorrect}</Text>
+                  <Text style={styles.sessionStatLabel}>Correct</Text>
+                </View>
+
+                <View style={styles.sessionStat}>
+                  <Text style={styles.sessionStatValue}>{accuracy}%</Text>
+                  <Text style={styles.sessionStatLabel}>Accuracy</Text>
+                </View>
+
+                <View style={styles.sessionStat}>
+                  <Text style={styles.sessionStatValue}>{formatTime(sessionTime)}</Text>
+                  <Text style={styles.sessionStatLabel}>Time</Text>
+                </View>
               </View>
             </View>
-
-            <View style={styles.cardStats}>
-              <View style={styles.statItem}>
-                <Text style={styles.statValue}>{item.totalCards}</Text>
-                <Text style={styles.statLabel}>Cards</Text>
-              </View>
-
-              <View style={styles.statItem}>
-                <Text style={styles.statValue}>{item.correctCards}</Text>
-                <Text style={styles.statLabel}>Correct</Text>
-              </View>
-
-              <View style={styles.statItem}>
-                <Text style={styles.statValue}>{item.attempts}</Text>
-                <Text style={styles.statLabel}>Attempts</Text>
-              </View>
-            </View>
-
-            <Text style={styles.lastStudied}>
-              Last studied: {formatDate(item.lastStudied)}
-            </Text>
-          </TouchableOpacity>
-        )}
+          );
+        }}
+        ListEmptyComponent={
+          <Text style={styles.emptyMessage}>No history available.</Text>
+        }
       />
 
       <TouchableOpacity
         style={styles.refreshButton}
-        onPress={fetchFlashcardHistory}
+        onPress={fetchHistory}
       >
         <Text style={styles.refreshButtonText}>Refresh History</Text>
       </TouchableOpacity>
@@ -285,8 +218,8 @@ export default function FlashcardHistoryScreen({ route, navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    padding: 20,
     backgroundColor: '#f5f5f5',
-    padding: 15,
   },
   loadingContainer: {
     flex: 1,
@@ -301,112 +234,132 @@ const styles = StyleSheet.create({
   },
   emptyContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
     padding: 20,
-  },
-  emptyTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginBottom: 10,
-    color: '#333',
-  },
-  emptySubtitle: {
-    fontSize: 16,
-    textAlign: 'center',
-    marginBottom: 30,
-    color: '#666',
-  },
-  emptyButton: {
-    backgroundColor: '#FF9800',
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderRadius: 8,
-  },
-  emptyButtonText: {
-    color: '#fff',
-    fontWeight: 'bold',
-    fontSize: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#f5f5f5',
   },
   title: {
-    fontSize: 20,
+    fontSize: 24,
     fontWeight: 'bold',
-    marginBottom: 15,
+    marginBottom: 5,
     color: '#333',
+  },
+  subtitle: {
+    fontSize: 16,
+    marginBottom: 20,
+    color: '#666',
+  },
+  emptyMessage: {
+    fontSize: 16,
     textAlign: 'center',
+    marginVertical: 30,
+    color: '#666',
   },
-  list: {
-    paddingBottom: 20,
-  },
-  card: {
+  statsCard: {
     backgroundColor: '#fff',
     borderRadius: 10,
     padding: 15,
-    marginBottom: 15,
+    marginBottom: 20,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
   },
-  cardHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 15,
-  },
-  cardIcon: {
-    fontSize: 24,
-    marginRight: 10,
-  },
-  cardTitle: {
-    flex: 1,
+  statsTitle: {
     fontSize: 18,
     fontWeight: 'bold',
+    marginBottom: 15,
+    textAlign: 'center',
     color: '#333',
   },
-  cardBadge: {
-    backgroundColor: '#FF9800',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  cardBadgeText: {
-    color: '#fff',
-    fontWeight: 'bold',
-    fontSize: 12,
-  },
-  cardStats: {
+  statRow: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
-    marginBottom: 15,
+    justifyContent: 'space-between',
+    marginBottom: 10,
   },
-  statItem: {
+  stat: {
+    flex: 1,
     alignItems: 'center',
   },
   statValue: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: 'bold',
     color: '#4CAF50',
   },
   statLabel: {
+    fontSize: 14,
+    color: '#666',
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 10,
+    color: '#333',
+  },
+  sessionCard: {
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    padding: 15,
+    marginBottom: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  sessionDate: {
+    fontSize: 14,
+    color: '#666',
+  },
+  sessionTopic: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginVertical: 5,
+    color: '#333',
+  },
+  sessionStats: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 10,
+  },
+  sessionStat: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  sessionStatValue: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#4CAF50',
+  },
+  sessionStatLabel: {
     fontSize: 12,
     color: '#666',
   },
-  lastStudied: {
-    fontSize: 12,
-    color: '#999',
-    textAlign: 'right',
+  button: {
+    backgroundColor: '#4CAF50',
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 5,
+    marginTop: 20,
+  },
+  buttonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
   refreshButton: {
     backgroundColor: '#2196F3',
     padding: 12,
-    borderRadius: 8,
+    borderRadius: 5,
     alignItems: 'center',
+    marginTop: 10,
     marginBottom: 20,
   },
   refreshButtonText: {
     color: '#fff',
-    fontWeight: 'bold',
     fontSize: 16,
+    fontWeight: 'bold',
   }
 });

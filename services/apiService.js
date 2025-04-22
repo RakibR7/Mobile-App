@@ -154,7 +154,7 @@ export const getSubtopicProgress = async (userId, tutor) => {
   }
 };
 
-// Update performance data
+// Update performance data (ensure this exists)
 export const updatePerformanceData = async (performanceData) => {
   try {
     console.log('Updating performance data:', JSON.stringify(performanceData).substring(0, 200) + '...');

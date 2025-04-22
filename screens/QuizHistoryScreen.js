@@ -2,197 +2,193 @@
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, FlatList,
-  ActivityIndicator, Alert
+  ActivityIndicator, ScrollView, RefreshControl, Alert
 } from 'react-native';
 import { useUser } from '../context/UserContext';
 import { getPerformanceData } from '../services/apiService';
-import { subjectsData } from '../data/SubjectsData';
 
 export default function QuizHistoryScreen({ route, navigation }) {
   const { tutor, topic } = route.params || {};
   const { userId } = useUser();
 
   const [loading, setLoading] = useState(true);
-  const [quizHistory, setQuizHistory] = useState([]);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState(null);
+  const [sessions, setSessions] = useState([]);
+  const [stats, setStats] = useState({
+    totalQuizzes: 0,
+    totalQuestions: 0,
+    totalCorrect: 0,
+    accuracy: 0,
+    totalTime: 0,
+    averageScore: 0
+  });
+
+  // Debug information
+  const [debugInfo, setDebugInfo] = useState({
+    requestParams: {},
+    responseData: null,
+    error: null
+  });
 
   useEffect(() => {
-    fetchQuizHistory();
+    fetchHistory();
   }, []);
 
-  const fetchQuizHistory = async () => {
-    if (!userId) return;
-
-    setLoading(true);
-    try {
-      // Fetch quiz history for this user/tutor/topic
-      const data = await getPerformanceData(userId, tutor, topic, 'quiz');
-      console.log(`Found ${data.length} quiz history records`);
-
-      // Group by subtopic for easier navigation
-      const groupedBySubtopic = {};
-
-      data.forEach(item => {
-        const subtopic = item.subtopic || 'general';
-        if (!groupedBySubtopic[subtopic]) {
-          groupedBySubtopic[subtopic] = [];
-        }
-        groupedBySubtopic[subtopic].push(item);
-      });
-
-      // Convert to array format for FlatList
-      const formattedData = Object.keys(groupedBySubtopic).map(subtopic => {
-        const quizzes = groupedBySubtopic[subtopic];
-
-        // Calculate stats from sessions
-        const sessions = quizzes.flatMap(quiz => quiz.sessions || []);
-        const totalQuestions = sessions.reduce((sum, session) => sum + (session.cardsStudied || 0), 0);
-        const correctAnswers = sessions.reduce((sum, session) => sum + (session.correctAnswers || 0), 0);
-        const successRate = totalQuestions > 0 ? Math.round((correctAnswers / totalQuestions) * 100) : 0;
-
-        // Find subtopic details
-        const subtopicInfo = findSubtopic(tutor, subtopic) || {
-          name: subtopic.charAt(0).toUpperCase() + subtopic.slice(1),
-          icon: '📚'
-        };
-
-        // Find most recent session
-        const lastSession = sessions.reduce((latest, session) => {
-          if (!latest) return session;
-          if (!session.date) return latest;
-          return new Date(session.date) > new Date(latest.date) ? session : latest;
-        }, null);
-
-        return {
-          subtopic,
-          name: subtopicInfo.name,
-          icon: subtopicInfo.icon,
-          quizzes,
-          sessions,
-          totalQuestions,
-          correctAnswers,
-          successRate,
-          lastTaken: lastSession ? new Date(lastSession.date) : null
-        };
-      });
-
-      // Sort by most recently taken
-      formattedData.sort((a, b) => {
-        if (!a.lastTaken) return 1;
-        if (!b.lastTaken) return -1;
-        return b.lastTaken - a.lastTaken;
-      });
-
-      setQuizHistory(formattedData);
-    } catch (error) {
-      console.error('Error fetching quiz history:', error);
-      Alert.alert('Error', 'Failed to load quiz history. Please try again.');
-    } finally {
+  const fetchHistory = async () => {
+    if (!userId) {
+      setError("User ID not available. Please restart the app.");
       setLoading(false);
-    }
-  };
-
-  const formatDate = (date) => {
-    if (!date) return 'Never';
-
-    // If it's today, show time
-    const today = new Date();
-    const dateObj = new Date(date);
-
-    if (dateObj.toDateString() === today.toDateString()) {
-      return 'Today at ' + dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    }
-
-    // If it's yesterday
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
-    if (dateObj.toDateString() === yesterday.toDateString()) {
-      return 'Yesterday';
-    }
-
-    // Otherwise show date
-    return dateObj.toLocaleDateString();
-  };
-
-  const findSubtopic = (tutorId, subtopicId) => {
-    const subject = subjectsData[tutorId];
-    if (!subject) return null;
-
-    return subject.subtopics.find(st => st.id === subtopicId) || null;
-  };
-
-  const handleReviewQuiz = (subtopicData) => {
-    // First check if we have any questions to review
-    if (!subtopicData.quizzes ||
-        subtopicData.quizzes.length === 0 ||
-        !subtopicData.quizzes[0].cards ||
-        subtopicData.quizzes[0].cards.length === 0) {
-      Alert.alert('No Questions', 'No quiz questions found for this topic.');
       return;
     }
 
-    // Navigate to quiz with questions from past quizzes
-    // Get all cards from all quizzes
-    let allQuestions = [];
-    subtopicData.quizzes.forEach(quiz => {
-      if (quiz.cards && quiz.cards.length > 0) {
-        const questions = quiz.cards.map(card => ({
-          id: card.cardId,
-          question: card.question,
-          // For quizzes, we don't want to show the previous answer
-          previousAnswer: card.answer
-        }));
-        allQuestions = [...allQuestions, ...questions];
-      }
-    });
+    setLoading(true);
+    setError(null);
 
-    // Filter out duplicates
-    const uniqueQuestions = [];
-    const questionSet = new Set();
-
-    allQuestions.forEach(q => {
-      if (!questionSet.has(q.question)) {
-        questionSet.add(q.question);
-        uniqueQuestions.push(q);
-      }
-    });
-
-    // Navigate to the quiz screen with these questions
-    navigation.navigate('DynamicExercise', {
+    // Store debug information
+    const requestParams = {
+      userId,
       tutor,
-      topic: subtopicData.subtopic,
-      topicName: subtopicData.name,
-      existingQuestions: uniqueQuestions.slice(0, 5), // Limit to 5 questions
-      isReview: true
-    });
+      topic,
+      activityType: 'quiz'
+    };
+    setDebugInfo(prev => ({ ...prev, requestParams }));
+
+    try {
+      // Try with regular topic parameter
+      let data = await getPerformanceData(
+        userId,
+        tutor,
+        topic,
+        'quiz'
+      );
+
+      console.log(`Found ${data?.length || 0} quiz history records with specific topic`);
+
+      // If we get no results, try with a more general search without the topic
+      if (!data || data.length === 0) {
+        console.log('No records found with specific topic, trying broader search');
+        data = await getPerformanceData(
+          userId,
+          tutor,
+          null, // Try without topic filter
+          'quiz'
+        );
+        console.log(`Found ${data?.length || 0} quiz history records with broader search`);
+      }
+
+      // Store response data for debugging
+      setDebugInfo(prev => ({ ...prev, responseData: data }));
+
+      if (!Array.isArray(data)) {
+        throw new Error("Invalid data format received from server");
+      }
+
+      // Filter results client-side if we have topic information
+      let filteredData = data;
+      if (topic && data.length > 0) {
+        // We might need to match topics in different formats
+        const normalizedTopic = topic.toLowerCase();
+        filteredData = data.filter(session => {
+          // Check in multiple possible locations/formats
+          const sessionTopic = (session.topic || '').toLowerCase();
+          const sessionSubtopic = (session.subtopic || '').toLowerCase();
+
+          return sessionTopic.includes(normalizedTopic) ||
+                 normalizedTopic.includes(sessionTopic) ||
+                 sessionSubtopic.includes(normalizedTopic) ||
+                 normalizedTopic.includes(sessionSubtopic);
+        });
+
+        console.log(`Filtered to ${filteredData.length} relevant records`);
+      }
+
+      setSessions(filteredData);
+
+      // Calculate overall stats
+      let totalQuestions = 0;
+      let totalCorrect = 0;
+      let totalTime = 0;
+      let totalQuizzes = 0;
+
+      filteredData.forEach(session => {
+        totalQuizzes++;
+
+        if (session.sessionData) {
+          // Direct sessionData format
+          totalQuestions += session.sessionData.cardsStudied || 0;
+          totalCorrect += session.sessionData.correctAnswers || 0;
+          totalTime += session.sessionData.timeSpent || 0;
+        } else if (session.sessions && Array.isArray(session.sessions)) {
+          // Nested sessions format
+          session.sessions.forEach(s => {
+            totalQuestions += s.cardsStudied || 0;
+            totalCorrect += s.correctAnswers || 0;
+            totalTime += s.timeSpent || 0;
+          });
+        }
+      });
+
+      setStats({
+        totalQuizzes,
+        totalQuestions,
+        totalCorrect,
+        accuracy: totalQuestions > 0 ? Math.round((totalCorrect / totalQuestions) * 100) : 0,
+        totalTime,
+        averageScore: totalQuizzes > 0 ? Math.round(totalCorrect / totalQuizzes) : 0
+      });
+
+    } catch (error) {
+      console.error('Error fetching quiz history:', error);
+      setError("Couldn't load history data. " + error.message);
+      setDebugInfo(prev => ({ ...prev, error: error.toString() }));
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
   };
 
-  const handleStudyOptions = (subtopicData) => {
-    // Show options: review past questions or generate new ones
+  const onRefresh = () => {
+    setRefreshing(true);
+    fetchHistory();
+  };
+
+  const formatTime = (seconds) => {
+    if (!seconds || isNaN(seconds)) return '0m 0s';
+
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = Math.floor(seconds % 60);
+    return `${minutes}m ${remainingSeconds}s`;
+  };
+
+  const formatDate = (dateString) => {
+    if (!dateString) return 'Unknown date';
+
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    } catch (e) {
+      return 'Invalid date';
+    }
+  };
+
+  const getScoreColor = (percentage) => {
+    if (percentage >= 80) return '#4CAF50'; // Green
+    if (percentage >= 60) return '#FF9800'; // Orange
+    return '#F44336'; // Red
+  };
+
+  const showDebugInfo = () => {
     Alert.alert(
-      'Quiz Options',
-      `How would you like to practice ${subtopicData.name}?`,
-      [
-        {
-          text: 'Review Past Questions',
-          onPress: () => handleReviewQuiz(subtopicData)
-        },
-        {
-          text: 'Generate New Questions',
-          onPress: () => navigation.navigate('DynamicExercise', {
-            tutor,
-            topic: subtopicData.subtopic,
-            topicName: subtopicData.name
-          })
-        },
-        {
-          text: 'Cancel',
-          style: 'cancel'
-        }
-      ]
+      'Debug Information',
+      `Request Params: ${JSON.stringify(debugInfo.requestParams)}\n\n` +
+      `Response: ${JSON.stringify(debugInfo.responseData)}\n\n` +
+      `Error: ${debugInfo.error || 'None'}`,
+      [{ text: 'OK' }]
     );
   };
 
-  if (loading) {
+  if (loading && !refreshing) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#4CAF50" />
@@ -201,89 +197,214 @@ export default function QuizHistoryScreen({ route, navigation }) {
     );
   }
 
-  if (quizHistory.length === 0) {
-    return (
-      <View style={styles.emptyContainer}>
-        <Text style={styles.emptyTitle}>No Quiz History</Text>
-        <Text style={styles.emptySubtitle}>
-          You haven't taken any quizzes yet for {topic ? `the ${topic} topic` : `this subject`}.
-        </Text>
-        <TouchableOpacity
-          style={styles.emptyButton}
-          onPress={() => navigation.navigate('TopicSelection', { tutor })}
-        >
-          <Text style={styles.emptyButtonText}>Start Practicing</Text>
+  return (
+    <ScrollView
+      style={styles.container}
+      refreshControl={
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={onRefresh}
+          colors={['#4CAF50']}
+          tintColor="#4CAF50"
+        />
+      }
+    >
+      <View style={styles.headerRow}>
+        <Text style={styles.title}>Quiz History</Text>
+        <TouchableOpacity onPress={showDebugInfo} style={styles.debugButton}>
+          <Text style={styles.debugButtonText}>Debug</Text>
         </TouchableOpacity>
       </View>
-    );
-  }
 
-  return (
-    <View style={styles.container}>
-      <Text style={styles.title}>
-        Quiz History {topic ? `- ${topic}` : ''}
+      <Text style={styles.subtitle}>
+        {tutor ? `Tutor: ${tutor}` : 'All Tutors'},
+        {topic ? ` Topic: ${topic}` : ' All Topics'}
       </Text>
 
-      <FlatList
-        data={quizHistory}
-        keyExtractor={(item) => item.subtopic}
-        contentContainerStyle={styles.list}
-        renderItem={({ item }) => (
-          <TouchableOpacity
-            style={styles.card}
-            onPress={() => handleStudyOptions(item)}
-          >
-            <View style={styles.cardHeader}>
-              <Text style={styles.cardIcon}>{item.icon}</Text>
-              <Text style={styles.cardTitle}>{item.name}</Text>
-              <View style={[
-                styles.cardBadge,
-                { backgroundColor: item.successRate >= 70 ? '#4CAF50' :
-                                    item.successRate >= 40 ? '#FF9800' : '#F44336' }
-              ]}>
-                <Text style={styles.cardBadgeText}>{item.successRate}%</Text>
-              </View>
-            </View>
-
-            <View style={styles.cardStats}>
-              <View style={styles.statItem}>
-                <Text style={styles.statValue}>{item.sessions.length}</Text>
-                <Text style={styles.statLabel}>Quizzes</Text>
-              </View>
-
-              <View style={styles.statItem}>
-                <Text style={styles.statValue}>{item.totalQuestions}</Text>
-                <Text style={styles.statLabel}>Questions</Text>
-              </View>
-
-              <View style={styles.statItem}>
-                <Text style={styles.statValue}>{item.correctAnswers}</Text>
-                <Text style={styles.statLabel}>Correct</Text>
-              </View>
-            </View>
-
-            <Text style={styles.lastTaken}>
-              Last taken: {formatDate(item.lastTaken)}
-            </Text>
+      {error && (
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>{error}</Text>
+          <TouchableOpacity style={styles.retryButton} onPress={fetchHistory}>
+            <Text style={styles.retryButtonText}>Retry</Text>
           </TouchableOpacity>
-        )}
-      />
+        </View>
+      )}
+
+      {!error && (
+        <View style={styles.statsCard}>
+          <Text style={styles.statsTitle}>Overall Performance</Text>
+
+          <View style={styles.statRow}>
+            <View style={styles.stat}>
+              <Text style={styles.statValue}>{stats.totalQuizzes}</Text>
+              <Text style={styles.statLabel}>Total Quizzes</Text>
+            </View>
+
+            <View style={styles.stat}>
+              <Text style={styles.statValue}>{stats.totalQuestions}</Text>
+              <Text style={styles.statLabel}>Questions</Text>
+            </View>
+          </View>
+
+          <View style={styles.statRow}>
+            <View style={styles.stat}>
+              <Text style={[styles.statValue, {color: getScoreColor(stats.accuracy)}]}>
+                {stats.accuracy}%
+              </Text>
+              <Text style={styles.statLabel}>Accuracy</Text>
+            </View>
+
+            <View style={styles.stat}>
+              <Text style={styles.statValue}>{formatTime(stats.totalTime)}</Text>
+              <Text style={styles.statLabel}>Total Time</Text>
+            </View>
+          </View>
+
+          <View style={styles.progressBarContainer}>
+            <Text style={styles.progressLabel}>Overall Accuracy</Text>
+            <View style={styles.progressBackground}>
+              <View
+                style={[
+                  styles.progressFill,
+                  {
+                    width: `${stats.accuracy}%`,
+                    backgroundColor: getScoreColor(stats.accuracy)
+                  }
+                ]}
+              />
+            </View>
+          </View>
+        </View>
+      )}
+
+      {sessions.length > 0 ? (
+        <>
+          <Text style={styles.sectionTitle}>Quiz Sessions</Text>
+
+          {sessions.map((item, index) => {
+            // Calculate session stats
+            let sessionQuestions = 0;
+            let sessionCorrect = 0;
+            let sessionTime = 0;
+
+            // Handle different data formats
+            if (item.sessionData) {
+              // Direct format
+              sessionQuestions = item.sessionData.cardsStudied || 0;
+              sessionCorrect = item.sessionData.correctAnswers || 0;
+              sessionTime = item.sessionData.timeSpent || 0;
+            } else if (item.sessions && Array.isArray(item.sessions) && item.sessions.length > 0) {
+              // Nested sessions format
+              item.sessions.forEach(s => {
+                sessionQuestions += s.cardsStudied || 0;
+                sessionCorrect += s.correctAnswers || 0;
+                sessionTime += s.timeSpent || 0;
+              });
+            }
+
+            const accuracy = sessionQuestions > 0 ? Math.round((sessionCorrect / sessionQuestions) * 100) : 0;
+
+            return (
+              <View key={item._id || index} style={styles.sessionCard}>
+                <View style={styles.sessionHeader}>
+                  <Text style={styles.sessionDate}>
+                    {formatDate(item.createdAt || new Date())}
+                  </Text>
+                  <View style={[
+                    styles.scoreTag,
+                    {backgroundColor: getScoreColor(accuracy)}
+                  ]}>
+                    <Text style={styles.scoreText}>{accuracy}%</Text>
+                  </View>
+                </View>
+
+                <Text style={styles.sessionTopic}>
+                  {item.topic || item.subtopic || 'Unknown Topic'}
+                </Text>
+
+                <View style={styles.sessionStats}>
+                  <View style={styles.sessionStat}>
+                    <Text style={styles.sessionStatValue}>{sessionQuestions}</Text>
+                    <Text style={styles.sessionStatLabel}>Questions</Text>
+                  </View>
+
+                  <View style={styles.sessionStat}>
+                    <Text style={styles.sessionStatValue}>{sessionCorrect}</Text>
+                    <Text style={styles.sessionStatLabel}>Correct</Text>
+                  </View>
+
+                  <View style={styles.sessionStat}>
+                    <Text style={styles.sessionStatValue}>{formatTime(sessionTime)}</Text>
+                    <Text style={styles.sessionStatLabel}>Time</Text>
+                  </View>
+                </View>
+
+                <View style={styles.sessionProgressContainer}>
+                  <View style={styles.progressBackground}>
+                    <View
+                      style={[
+                        styles.progressFill,
+                        {
+                          width: `${accuracy}%`,
+                          backgroundColor: getScoreColor(accuracy)
+                        }
+                      ]}
+                    />
+                  </View>
+                </View>
+              </View>
+            );
+          })}
+        </>
+      ) : (
+        <View style={styles.emptyContainer}>
+          <Text style={styles.emptyMessage}>
+            No quiz history found for this topic.
+          </Text>
+          <Text style={styles.emptySubtext}>
+            Complete a quiz to see your performance here.
+          </Text>
+        </View>
+      )}
 
       <TouchableOpacity
-        style={styles.refreshButton}
-        onPress={fetchQuizHistory}
+        style={styles.backButton}
+        onPress={() => navigation.goBack()}
       >
-        <Text style={styles.refreshButtonText}>Refresh History</Text>
+        <Text style={styles.backButtonText}>Go Back</Text>
       </TouchableOpacity>
-    </View>
+
+      {sessions.length > 0 && (
+        <TouchableOpacity
+          style={styles.practiceButton}
+          onPress={() => navigation.navigate('TopicSelection', { tutor, preSelectedTopic: topic })}
+        >
+          <Text style={styles.practiceButtonText}>Practice More</Text>
+        </TouchableOpacity>
+      )}
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    padding: 20,
     backgroundColor: '#f5f5f5',
-    padding: 15,
+  },
+  headerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  debugButton: {
+    padding: 5,
+    backgroundColor: '#f0f0f0',
+    borderRadius: 4,
+  },
+  debugButtonText: {
+    fontSize: 12,
+    color: '#666',
   },
   loadingContainer: {
     flex: 1,
@@ -296,113 +417,202 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#333',
   },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  emptyTitle: {
-    fontSize: 20,
+  title: {
+    fontSize: 24,
     fontWeight: 'bold',
-    marginBottom: 10,
+    marginBottom: 5,
     color: '#333',
   },
-  emptySubtitle: {
+  subtitle: {
     fontSize: 16,
-    textAlign: 'center',
-    marginBottom: 30,
+    marginBottom: 20,
     color: '#666',
   },
-  emptyButton: {
-    backgroundColor: '#9C27B0',
-    paddingHorizontal: 20,
-    paddingVertical: 12,
+  errorContainer: {
+    backgroundColor: 'rgba(244, 67, 54, 0.1)',
+    padding: 15,
     borderRadius: 8,
+    marginBottom: 20,
+    alignItems: 'center',
   },
-  emptyButtonText: {
-    color: '#fff',
-    fontWeight: 'bold',
+  errorText: {
+    color: '#D32F2F',
     fontSize: 16,
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginBottom: 15,
-    color: '#333',
+    marginBottom: 10,
     textAlign: 'center',
   },
-  list: {
-    paddingBottom: 20,
+  retryButton: {
+    backgroundColor: '#4CAF50',
+    paddingVertical: 8,
+    paddingHorizontal: 15,
+    borderRadius: 5,
   },
-  card: {
+  retryButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+  emptyContainer: {
+    padding: 30,
+    alignItems: 'center',
+    backgroundColor: '#FFF',
+    borderRadius: 8,
+    marginBottom: 20,
+  },
+  emptyMessage: {
+    fontSize: 16,
+    color: '#666',
+    marginBottom: 10,
+    textAlign: 'center',
+  },
+  emptySubtext: {
+    fontSize: 14,
+    color: '#999',
+    textAlign: 'center',
+  },
+  statsCard: {
     backgroundColor: '#fff',
     borderRadius: 10,
     padding: 15,
-    marginBottom: 15,
+    marginBottom: 20,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
   },
-  cardHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 15,
-  },
-  cardIcon: {
-    fontSize: 24,
-    marginRight: 10,
-  },
-  cardTitle: {
-    flex: 1,
+  statsTitle: {
     fontSize: 18,
     fontWeight: 'bold',
+    marginBottom: 15,
+    textAlign: 'center',
     color: '#333',
   },
-  cardBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  cardBadgeText: {
-    color: '#fff',
-    fontWeight: 'bold',
-    fontSize: 12,
-  },
-  cardStats: {
+  statRow: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
+    justifyContent: 'space-between',
     marginBottom: 15,
   },
-  statItem: {
+  stat: {
+    flex: 1,
     alignItems: 'center',
   },
   statValue: {
-    fontSize: 18,
+    fontSize: 22,
     fontWeight: 'bold',
-    color: '#9C27B0',
+    color: '#4CAF50',
   },
   statLabel: {
+    fontSize: 14,
+    color: '#666',
+  },
+  progressBarContainer: {
+    marginTop: 10,
+  },
+  progressLabel: {
+    fontSize: 14,
+    color: '#555',
+    marginBottom: 5,
+  },
+  progressBackground: {
+    height: 10,
+    backgroundColor: '#E0E0E0',
+    borderRadius: 5,
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: '100%',
+    borderRadius: 5,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 10,
+    color: '#333',
+  },
+  sessionCard: {
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    padding: 15,
+    marginBottom: 15,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  sessionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 5,
+  },
+  sessionDate: {
+    fontSize: 14,
+    color: '#666',
+  },
+  scoreTag: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 4,
+  },
+  scoreText: {
+    color: '#FFF',
+    fontWeight: 'bold',
+    fontSize: 12,
+  },
+  sessionTopic: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginBottom: 10,
+    color: '#333',
+  },
+  sessionStats: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+  },
+  sessionStat: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  sessionStatValue: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#4CAF50',
+  },
+  sessionStatLabel: {
     fontSize: 12,
     color: '#666',
   },
-  lastTaken: {
-    fontSize: 12,
-    color: '#999',
-    textAlign: 'right',
+  sessionProgressContainer: {
+    marginTop: 5,
   },
-  refreshButton: {
-    backgroundColor: '#2196F3',
-    padding: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginBottom: 20,
+  backButton: {
+    backgroundColor: '#607D8B',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 5,
+    marginTop: 10,
+    marginBottom: 15,
+    alignSelf: 'center',
   },
-  refreshButtonText: {
+  backButtonText: {
     color: '#fff',
-    fontWeight: 'bold',
     fontSize: 16,
+    fontWeight: 'bold',
+  },
+  practiceButton: {
+    backgroundColor: '#4CAF50',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 5,
+    marginBottom: 30,
+    alignSelf: 'center',
+  },
+  practiceButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
   }
 });

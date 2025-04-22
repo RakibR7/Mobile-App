@@ -10,6 +10,85 @@ import { updatePerformanceData, getPerformanceData } from '../services/apiServic
 const { width } = Dimensions.get('window');
 const CARD_WIDTH = width * 0.85;
 
+// Fallback flashcards if API fails
+const getDefaultFlashcards = (topic, tutor) => {
+  return [
+    {
+      id: 1,
+      question: `What is ${topic || tutor}?`,
+      answer: `The study of ${topic || tutor} focuses on understanding key concepts and principles.`,
+      attempts: 0,
+      correct: 0,
+      lastResult: null
+    },
+    {
+      id: 2,
+      question: `Name a key concept in ${topic || tutor}.`,
+      answer: `One key concept is the fundamental principles that underlie ${topic || tutor}.`,
+      attempts: 0,
+      correct: 0,
+      lastResult: null
+    },
+    {
+      id: 3,
+      question: `Why is ${topic || tutor} important?`,
+      answer: `It's important because it helps us understand the world around us and solve real-world problems.`,
+      attempts: 0,
+      correct: 0,
+      lastResult: null
+    }
+  ];
+};
+
+// Get specific defaultcards for biology topics
+const getBiologyFlashcards = (topic) => {
+  if (topic === "cells") {
+    return [
+      {
+        id: 1,
+        question: "What are the main parts of a eukaryotic cell?",
+        answer: "Nucleus, cell membrane, cytoplasm, and various organelles like mitochondria, endoplasmic reticulum, and Golgi apparatus.",
+        attempts: 0,
+        correct: 0,
+        lastResult: null
+      },
+      {
+        id: 2,
+        question: "What is the function of the cell membrane?",
+        answer: "The cell membrane regulates what enters and exits the cell, provides structure, and helps in cell communication.",
+        attempts: 0,
+        correct: 0,
+        lastResult: null
+      },
+      {
+        id: 3,
+        question: "What is the difference between prokaryotic and eukaryotic cells?",
+        answer: "Prokaryotic cells lack a nucleus and membrane-bound organelles, while eukaryotic cells have a nucleus and various membrane-bound organelles.",
+        attempts: 0,
+        correct: 0,
+        lastResult: null
+      },
+      {
+        id: 4,
+        question: "What is the function of mitochondria?",
+        answer: "Mitochondria are the powerhouses of the cell, responsible for cellular respiration and producing ATP (energy).",
+        attempts: 0,
+        correct: 0,
+        lastResult: null
+      },
+      {
+        id: 5,
+        question: "What is the role of the nucleus in a cell?",
+        answer: "The nucleus contains the cell's DNA, controls cellular activities, and regulates gene expression.",
+        attempts: 0,
+        correct: 0,
+        lastResult: null
+      }
+    ];
+  }
+  return getDefaultFlashcards(topic, "biology");
+};
+
 export default function FlashcardsScreen({ route, navigation }) {
   const { tutor, topic, topicName } = route.params;
   const { userId } = useUser();
@@ -21,6 +100,7 @@ export default function FlashcardsScreen({ route, navigation }) {
   const [loading, setLoading] = useState(true);
   const [sessionStartTime, setSessionStartTime] = useState(null);
   const [showRevisionOptions, setShowRevisionOptions] = useState(true);
+  const [networkError, setNetworkError] = useState(false);
   const [sessionStats, setSessionStats] = useState({
     cardsStudied: 0,
     correctAnswers: 0,
@@ -46,42 +126,53 @@ export default function FlashcardsScreen({ route, navigation }) {
   const fetchSavedFlashcards = async () => {
     try {
       setLoading(true);
+      setNetworkError(false);
+
       // Get previously studied flashcards from the performance data
       if (userId) {
-        const performanceData = await getPerformanceData(
-          userId,
-          tutor,
-          topicName || tutor,
-          'flashcard'
-        );
+        try {
+          const performanceData = await getPerformanceData(
+            userId,
+            tutor,
+            topicName || tutor,
+            'flashcard'
+          );
 
-        // Extract unique flashcards from the performance data
-        const savedCards = [];
-        const uniqueQuestions = new Set();
+          // Extract unique flashcards from the performance data
+          const savedCards = [];
+          const uniqueQuestions = new Set();
 
-        performanceData.forEach(session => {
-          if (session.cards && session.cards.length > 0) {
-            session.cards.forEach(card => {
-              // Only add cards for this specific topic if specified
-              if ((!topic || card.subtopic === topic) && !uniqueQuestions.has(card.question)) {
-                uniqueQuestions.add(card.question);
-                savedCards.push({
-                  id: card.cardId || savedCards.length + 1,
-                  question: card.question,
-                  answer: card.answer,
-                  attempts: card.attempts || 0,
-                  correct: card.correctAttempts || 0,
-                  lastResult: null
+          if (Array.isArray(performanceData)) {
+            performanceData.forEach(session => {
+              if (session.cards && Array.isArray(session.cards) && session.cards.length > 0) {
+                session.cards.forEach(card => {
+                  // Only add cards for this specific topic if specified
+                  if ((!topic || card.subtopic === topic) && !uniqueQuestions.has(card.question)) {
+                    uniqueQuestions.add(card.question);
+                    savedCards.push({
+                      id: card.cardId || savedCards.length + 1,
+                      question: card.question,
+                      answer: card.answer,
+                      attempts: card.attempts || 0,
+                      correct: card.correctAttempts || 0,
+                      lastResult: null
+                    });
+                  }
                 });
               }
             });
           }
-        });
 
-        setSavedFlashcards(savedCards);
+          setSavedFlashcards(savedCards);
+        } catch (error) {
+          console.error('Error fetching performance data:', error);
+          // Don't show error for this part, just set empty saved flashcards
+          setSavedFlashcards([]);
+        }
       }
     } catch (error) {
-      console.error('Error fetching saved flashcards:', error);
+      console.error('Error in fetchSavedFlashcards:', error);
+      setSavedFlashcards([]);
     } finally {
       setLoading(false);
     }
@@ -89,6 +180,8 @@ export default function FlashcardsScreen({ route, navigation }) {
 
   const generateFlashcards = async () => {
     setLoading(true);
+    setNetworkError(false);
+
     try {
       // Generate flashcards using your AI API
       const prompt = `Create 5 flashcards about ${topicName || tutor} for studying. Each flashcard should have a question on one side and the answer on the other. Format as JSON array with the structure [{"id": 1, "question": "question text", "answer": "answer text"}]. Only return the JSON array, no other text.`;
@@ -100,11 +193,12 @@ export default function FlashcardsScreen({ route, navigation }) {
           message: prompt,
           model: 'gpt-3.5-turbo',
           tutor
-        })
+        }),
+        timeout: 10000 // Add timeout to prevent long-hanging requests
       });
 
       if (!response.ok) {
-        throw new Error('Failed to generate flashcards');
+        throw new Error(`Server responded with status ${response.status}`);
       }
 
       const data = await response.json();
@@ -112,17 +206,31 @@ export default function FlashcardsScreen({ route, navigation }) {
       // Parse the AI response to extract the flashcards
       let parsedFlashcards;
       try {
-        // Sometimes AI might wrap the JSON in code blocks or other text
-        const jsonMatch = data.response.match(/\[.*\]/s);
-        if (jsonMatch) {
-          parsedFlashcards = JSON.parse(jsonMatch[0]);
+        // Try different parsing strategies to handle various API response formats
+        if (typeof data.response === 'string') {
+          // Look for a JSON array in the response
+          const jsonMatch = data.response.match(/\[\s*\{.*\}\s*\]/s);
+          if (jsonMatch) {
+            parsedFlashcards = JSON.parse(jsonMatch[0]);
+          } else if (data.response.startsWith('[') && data.response.endsWith(']')) {
+            // Try direct parsing if it looks like JSON
+            parsedFlashcards = JSON.parse(data.response);
+          } else {
+            // If we can't find JSON, fall back to default cards
+            throw new Error("Couldn't extract JSON from response");
+          }
+        } else if (Array.isArray(data.response)) {
+          // Response is already an array
+          parsedFlashcards = data.response;
         } else {
-          parsedFlashcards = JSON.parse(data.response);
+          throw new Error("Unexpected response format");
         }
 
         // Add tracking properties to each card
-        parsedFlashcards = parsedFlashcards.map(card => ({
-          ...card,
+        parsedFlashcards = parsedFlashcards.map((card, index) => ({
+          id: card.id || index + 1,
+          question: card.question,
+          answer: card.answer,
           attempts: 0,
           correct: 0,
           lastResult: null
@@ -130,33 +238,12 @@ export default function FlashcardsScreen({ route, navigation }) {
 
       } catch (parseError) {
         console.error('Error parsing flashcards:', parseError);
-        // Fallback to some default flashcards if parsing fails
-        parsedFlashcards = [
-          {
-            id: 1,
-            question: `What is ${topicName || tutor}?`,
-            answer: `The study of ${topicName || tutor} focuses on understanding key concepts and principles.`,
-            attempts: 0,
-            correct: 0,
-            lastResult: null
-          },
-          {
-            id: 2,
-            question: `Name a key concept in ${topicName || tutor}.`,
-            answer: `One key concept is the fundamental principles that underlie this subject.`,
-            attempts: 0,
-            correct: 0,
-            lastResult: null
-          },
-          {
-            id: 3,
-            question: `Why is ${topicName || tutor} important?`,
-            answer: `It's important because it helps us understand the world around us and solve real-world problems.`,
-            attempts: 0,
-            correct: 0,
-            lastResult: null
-          }
-        ];
+        // Use topic-specific flashcards when available
+        if (tutor === 'biology' && topic) {
+          parsedFlashcards = getBiologyFlashcards(topic);
+        } else {
+          parsedFlashcards = getDefaultFlashcards(topicName, tutor);
+        }
       }
 
       setShowRevisionOptions(false);
@@ -171,7 +258,24 @@ export default function FlashcardsScreen({ route, navigation }) {
       setSessionStartTime(Date.now());
     } catch (error) {
       console.error('Error generating flashcards:', error);
-      Alert.alert('Error', 'Failed to generate flashcards. Please try again.');
+      setNetworkError(true);
+
+      // Even with network errors, provide default flashcards
+      if (tutor === 'biology' && topic) {
+        setFlashcards(getBiologyFlashcards(topic));
+      } else {
+        setFlashcards(getDefaultFlashcards(topicName, tutor));
+      }
+
+      setShowRevisionOptions(false);
+      setCurrentIndex(0);
+      setSessionStats({
+        cardsStudied: 0,
+        correctAnswers: 0,
+        incorrectAnswers: 0,
+        timeSpent: 0
+      });
+      setSessionStartTime(Date.now());
     } finally {
       setLoading(false);
     }
@@ -263,6 +367,7 @@ export default function FlashcardsScreen({ route, navigation }) {
 
     } catch (error) {
       console.error('Error saving session data:', error);
+      // Don't show errors to user for this process
     }
   };
 
@@ -441,6 +546,14 @@ export default function FlashcardsScreen({ route, navigation }) {
           <Text style={styles.subtitle}>
             Choose your study mode:
           </Text>
+
+          {networkError && (
+            <View style={styles.errorContainer}>
+              <Text style={styles.errorText}>
+                Network issue detected. You can still use flashcards in offline mode.
+              </Text>
+            </View>
+          )}
 
           <TouchableOpacity
             style={styles.optionButton}
@@ -820,5 +933,17 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '500',
+  },
+  errorContainer: {
+    backgroundColor: 'rgba(244, 67, 54, 0.1)',
+    borderRadius: 5,
+    padding: 10,
+    marginBottom: 15,
+    width: '100%',
+  },
+  errorText: {
+    color: '#D32F2F',
+    fontSize: 14,
+    textAlign: 'center',
   }
 });

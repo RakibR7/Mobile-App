@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, FlatList,
-  ActivityIndicator
+  ActivityIndicator, ScrollView, RefreshControl
 } from 'react-native';
 import { useUser } from '../context/UserContext';
 import { getPerformanceData } from '../services/apiService';
@@ -12,6 +12,8 @@ export default function FlashcardHistoryScreen({ route, navigation }) {
   const { userId } = useUser();
 
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState(null);
   const [sessions, setSessions] = useState([]);
   const [stats, setStats] = useState({
     totalCards: 0,
@@ -25,9 +27,15 @@ export default function FlashcardHistoryScreen({ route, navigation }) {
   }, []);
 
   const fetchHistory = async () => {
-    if (!userId) return;
+    if (!userId) {
+      setError("User ID not available. Please restart the app.");
+      setLoading(false);
+      return;
+    }
 
     setLoading(true);
+    setError(null);
+
     try {
       const data = await getPerformanceData(
         userId,
@@ -35,6 +43,10 @@ export default function FlashcardHistoryScreen({ route, navigation }) {
         topic,
         'flashcard'
       );
+
+      if (!Array.isArray(data)) {
+        throw new Error("Invalid data format received from server");
+      }
 
       setSessions(data);
 
@@ -44,7 +56,7 @@ export default function FlashcardHistoryScreen({ route, navigation }) {
       let totalTime = 0;
 
       data.forEach(session => {
-        if (session.sessions) {
+        if (session.sessions && Array.isArray(session.sessions)) {
           session.sessions.forEach(s => {
             totalCards += s.cardsStudied || 0;
             totalCorrect += s.correctAnswers || 0;
@@ -62,24 +74,39 @@ export default function FlashcardHistoryScreen({ route, navigation }) {
 
     } catch (error) {
       console.error('Error fetching flashcard history:', error);
+      setError("Couldn't load history data. " + error.message);
+      // Keep whatever data we might have already
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   };
 
+  const onRefresh = () => {
+    setRefreshing(true);
+    fetchHistory();
+  };
+
   const formatTime = (seconds) => {
+    if (!seconds || isNaN(seconds)) return '0m 0s';
+
     const minutes = Math.floor(seconds / 60);
-    const remainingSeconds = seconds % 60;
+    const remainingSeconds = Math.floor(seconds % 60);
     return `${minutes}m ${remainingSeconds}s`;
   };
 
-// screens/FlashcardHistoryScreen.js (continued)
   const formatDate = (dateString) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    if (!dateString) return 'Unknown date';
+
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    } catch (e) {
+      return 'Invalid date';
+    }
   };
 
-  if (loading) {
+  if (loading && !refreshing) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#4CAF50" />
@@ -88,130 +115,135 @@ export default function FlashcardHistoryScreen({ route, navigation }) {
     );
   }
 
-  if (sessions.length === 0) {
-    return (
-      <View style={styles.emptyContainer}>
-        <Text style={styles.title}>Flashcard History</Text>
-        <Text style={styles.subtitle}>
-          Tutor: {tutor || 'All'}, Topic: {topic || 'All topics'}
-        </Text>
-
-        <Text style={styles.emptyMessage}>
-          No flashcard history found for this topic.
-        </Text>
-
-        <TouchableOpacity
-          style={styles.button}
-          onPress={() => navigation.goBack()}
-        >
-          <Text style={styles.buttonText}>Go Back</Text>
-        </TouchableOpacity>
-      </View>
-    );
-  }
-
   return (
-    <View style={styles.container}>
+    <ScrollView
+      style={styles.container}
+      refreshControl={
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={onRefresh}
+          colors={['#4CAF50']}
+          tintColor="#4CAF50"
+        />
+      }
+    >
       <Text style={styles.title}>Flashcard History</Text>
       <Text style={styles.subtitle}>
         {tutor ? `Tutor: ${tutor}` : 'All Tutors'},
         {topic ? ` Topic: ${topic}` : ' All Topics'}
       </Text>
 
-      <View style={styles.statsCard}>
-        <Text style={styles.statsTitle}>Overall Statistics</Text>
+      {error && (
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>{error}</Text>
+          <TouchableOpacity style={styles.retryButton} onPress={fetchHistory}>
+            <Text style={styles.retryButtonText}>Retry</Text>
+          </TouchableOpacity>
+        </View>
+      )}
 
-        <View style={styles.statRow}>
-          <View style={styles.stat}>
-            <Text style={styles.statValue}>{stats.totalCards}</Text>
-            <Text style={styles.statLabel}>Total Cards</Text>
+      {!error && (
+        <View style={styles.statsCard}>
+          <Text style={styles.statsTitle}>Overall Statistics</Text>
+
+          <View style={styles.statRow}>
+            <View style={styles.stat}>
+              <Text style={styles.statValue}>{stats.totalCards}</Text>
+              <Text style={styles.statLabel}>Total Cards</Text>
+            </View>
+
+            <View style={styles.stat}>
+              <Text style={styles.statValue}>{stats.accuracy}%</Text>
+              <Text style={styles.statLabel}>Accuracy</Text>
+            </View>
           </View>
 
-          <View style={styles.stat}>
-            <Text style={styles.statValue}>{stats.accuracy}%</Text>
-            <Text style={styles.statLabel}>Accuracy</Text>
+          <View style={styles.statRow}>
+            <View style={styles.stat}>
+              <Text style={styles.statValue}>{stats.totalCorrect}</Text>
+              <Text style={styles.statLabel}>Correct</Text>
+            </View>
+
+            <View style={styles.stat}>
+              <Text style={styles.statValue}>{formatTime(stats.totalTime)}</Text>
+              <Text style={styles.statLabel}>Study Time</Text>
+            </View>
           </View>
         </View>
+      )}
 
-        <View style={styles.statRow}>
-          <View style={styles.stat}>
-            <Text style={styles.statValue}>{stats.totalCorrect}</Text>
-            <Text style={styles.statLabel}>Correct</Text>
-          </View>
+      {sessions.length > 0 ? (
+        <>
+          <Text style={styles.sectionTitle}>Recent Sessions</Text>
 
-          <View style={styles.stat}>
-            <Text style={styles.statValue}>{formatTime(stats.totalTime)}</Text>
-            <Text style={styles.statLabel}>Study Time</Text>
-          </View>
-        </View>
-      </View>
+          {sessions.map((item, index) => {
+            // Calculate session stats
+            let sessionCards = 0;
+            let sessionCorrect = 0;
+            let sessionTime = 0;
 
-      <Text style={styles.sectionTitle}>Recent Sessions</Text>
+            if (item.sessions && Array.isArray(item.sessions) && item.sessions.length > 0) {
+              item.sessions.forEach(s => {
+                sessionCards += s.cardsStudied || 0;
+                sessionCorrect += s.correctAnswers || 0;
+                sessionTime += s.timeSpent || 0;
+              });
+            }
 
-      <FlatList
-        data={sessions}
-        keyExtractor={(item, index) => item._id || index.toString()}
-        renderItem={({ item }) => {
-          // Calculate session stats
-          let sessionCards = 0;
-          let sessionCorrect = 0;
-          let sessionTime = 0;
+            const accuracy = sessionCards > 0 ? Math.round((sessionCorrect / sessionCards) * 100) : 0;
 
-          if (item.sessions && item.sessions.length > 0) {
-            item.sessions.forEach(s => {
-              sessionCards += s.cardsStudied || 0;
-              sessionCorrect += s.correctAnswers || 0;
-              sessionTime += s.timeSpent || 0;
-            });
-          }
+            return (
+              <View key={item._id || index} style={styles.sessionCard}>
+                <Text style={styles.sessionDate}>
+                  {formatDate(item.createdAt || new Date())}
+                </Text>
+                <Text style={styles.sessionTopic}>
+                  {item.topic || 'Unknown Topic'}
+                </Text>
 
-          const accuracy = sessionCards > 0 ? Math.round((sessionCorrect / sessionCards) * 100) : 0;
+                <View style={styles.sessionStats}>
+                  <View style={styles.sessionStat}>
+                    <Text style={styles.sessionStatValue}>{sessionCards}</Text>
+                    <Text style={styles.sessionStatLabel}>Cards</Text>
+                  </View>
 
-          return (
-            <View style={styles.sessionCard}>
-              <Text style={styles.sessionDate}>
-                {formatDate(item.createdAt || new Date())}
-              </Text>
-              <Text style={styles.sessionTopic}>
-                {item.topic || 'Unknown Topic'}
-              </Text>
+                  <View style={styles.sessionStat}>
+                    <Text style={styles.sessionStatValue}>{sessionCorrect}</Text>
+                    <Text style={styles.sessionStatLabel}>Correct</Text>
+                  </View>
 
-              <View style={styles.sessionStats}>
-                <View style={styles.sessionStat}>
-                  <Text style={styles.sessionStatValue}>{sessionCards}</Text>
-                  <Text style={styles.sessionStatLabel}>Cards</Text>
-                </View>
+                  <View style={styles.sessionStat}>
+                    <Text style={styles.sessionStatValue}>{accuracy}%</Text>
+                    <Text style={styles.sessionStatLabel}>Accuracy</Text>
+                  </View>
 
-                <View style={styles.sessionStat}>
-                  <Text style={styles.sessionStatValue}>{sessionCorrect}</Text>
-                  <Text style={styles.sessionStatLabel}>Correct</Text>
-                </View>
-
-                <View style={styles.sessionStat}>
-                  <Text style={styles.sessionStatValue}>{accuracy}%</Text>
-                  <Text style={styles.sessionStatLabel}>Accuracy</Text>
-                </View>
-
-                <View style={styles.sessionStat}>
-                  <Text style={styles.sessionStatValue}>{formatTime(sessionTime)}</Text>
-                  <Text style={styles.sessionStatLabel}>Time</Text>
+                  <View style={styles.sessionStat}>
+                    <Text style={styles.sessionStatValue}>{formatTime(sessionTime)}</Text>
+                    <Text style={styles.sessionStatLabel}>Time</Text>
+                  </View>
                 </View>
               </View>
-            </View>
-          );
-        }}
-        ListEmptyComponent={
-          <Text style={styles.emptyMessage}>No history available.</Text>
-        }
-      />
+            );
+          })}
+        </>
+      ) : (
+        <View style={styles.emptyContainer}>
+          <Text style={styles.emptyMessage}>
+            No flashcard history found for this topic.
+          </Text>
+          <Text style={styles.emptySubtext}>
+            Complete a flashcard session to see your progress here.
+          </Text>
+        </View>
+      )}
 
       <TouchableOpacity
-        style={styles.refreshButton}
-        onPress={fetchHistory}
+        style={styles.button}
+        onPress={() => navigation.goBack()}
       >
-        <Text style={styles.refreshButtonText}>Refresh History</Text>
+        <Text style={styles.buttonText}>Go Back</Text>
       </TouchableOpacity>
-    </View>
+    </ScrollView>
   );
 }
 
@@ -232,13 +264,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#333',
   },
-  emptyContainer: {
-    flex: 1,
-    padding: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#f5f5f5',
-  },
   title: {
     fontSize: 24,
     fontWeight: 'bold',
@@ -250,11 +275,47 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     color: '#666',
   },
+  errorContainer: {
+    backgroundColor: 'rgba(244, 67, 54, 0.1)',
+    padding: 15,
+    borderRadius: 8,
+    marginBottom: 20,
+    alignItems: 'center',
+  },
+  errorText: {
+    color: '#D32F2F',
+    fontSize: 16,
+    marginBottom: 10,
+    textAlign: 'center',
+  },
+  retryButton: {
+    backgroundColor: '#4CAF50',
+    paddingVertical: 8,
+    paddingHorizontal: 15,
+    borderRadius: 5,
+  },
+  retryButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+  emptyContainer: {
+    padding: 30,
+    alignItems: 'center',
+    backgroundColor: '#FFF',
+    borderRadius: 8,
+    marginBottom: 20,
+  },
   emptyMessage: {
     fontSize: 16,
-    textAlign: 'center',
-    marginVertical: 30,
     color: '#666',
+    marginBottom: 10,
+    textAlign: 'center',
+  },
+  emptySubtext: {
+    fontSize: 14,
+    color: '#999',
+    textAlign: 'center',
   },
   statsCard: {
     backgroundColor: '#fff',
@@ -339,25 +400,14 @@ const styles = StyleSheet.create({
   },
   button: {
     backgroundColor: '#4CAF50',
-    paddingVertical: 10,
+    paddingVertical: 12,
     paddingHorizontal: 20,
     borderRadius: 5,
-    marginTop: 20,
+    marginTop: 10,
+    marginBottom: 30,
+    alignSelf: 'center',
   },
   buttonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  refreshButton: {
-    backgroundColor: '#2196F3',
-    padding: 12,
-    borderRadius: 5,
-    alignItems: 'center',
-    marginTop: 10,
-    marginBottom: 20,
-  },
-  refreshButtonText: {
     color: '#fff',
     fontSize: 16,
     fontWeight: 'bold',

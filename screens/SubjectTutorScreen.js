@@ -1,6 +1,9 @@
 // screens/SubjectTutorScreen.js
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, RefreshControl, ActivityIndicator } from 'react-native';
+import {
+  View, Text, StyleSheet, TouchableOpacity, ScrollView,
+  RefreshControl, ActivityIndicator
+} from 'react-native';
 import { createConversation } from '../services/apiService';
 import { syncConversations } from '../services/syncService';
 
@@ -127,6 +130,18 @@ export default function SubjectTutorScreen({ navigation }) {
               </TouchableOpacity>
             </View>
 
+            {/* Add Progress button */}
+            <TouchableOpacity
+              style={[styles.button, styles.progressButton]}
+              onPress={() => navigation.navigate('SubtopicProgress', {
+                tutor: subject.id
+              })}
+              disabled={loading}
+            >
+              <Text style={styles.buttonText}>Progress</Text>
+              <Text style={styles.buttonSubtext}>View Topic Mastery</Text>
+            </TouchableOpacity>
+
             {/* Display recent conversations for this subject */}
             {recentConversations[subject.id]?.length > 0 && (
               <View style={styles.recentConversations}>
@@ -165,7 +180,7 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: 'bold',
     color: '#FFFFFF',
-    marginBottom: 30,
+    marginBottom: 15,
     textAlign: 'center',
   },
   subjectButtons: {
@@ -192,14 +207,20 @@ const styles = StyleSheet.create({
   button: {
     padding: 15,
     borderRadius: 8,
-    width: '48%',
     alignItems: 'center',
   },
   chatButton: {
     backgroundColor: '#4CAF50',
+    width: '48%',
   },
   exerciseButton: {
     backgroundColor: '#FF9800',
+    width: '48%',
+  },
+  progressButton: {
+    backgroundColor: '#2196F3',
+    width: '100%',
+    marginBottom: 10,
   },
   buttonText: {
     color: '#FFFFFF',

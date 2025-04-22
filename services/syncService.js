@@ -1,10 +1,10 @@
-// services/syncService.js
-import * as apiService from './apiService';
+// syncService.js - Fix imports
+import { getConversations } from '../services/apiService';
 
 export const syncConversations = async (tutor) => {
   try {
     // Fetch the latest conversations from the server
-    const conversations = await apiService.getConversations(tutor);
+    const conversations = await getConversations(tutor);
     return conversations;
   } catch (error) {
     console.error('Sync error:', error);
@@ -15,7 +15,7 @@ export const syncConversations = async (tutor) => {
 export const syncMessages = async (conversationId, tutor) => {
   try {
     // Fetch all conversations to find the one with matching ID
-    const conversations = await apiService.getConversations(tutor);
+    const conversations = await getConversations(tutor);
     const currentConversation = conversations.find(conv => conv._id === conversationId);
 
     if (currentConversation) {

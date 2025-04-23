@@ -312,64 +312,70 @@ export default function FlashcardsScreen({ route, navigation }) {
     setSessionStartTime(Date.now());
   };
 
+  // Updated saveSession function for FlashcardsScreen.js
   const saveSession = async () => {
-    if (sessionStats.cardsStudied === 0 || !userId) return;
+  if (sessionStats.cardsStudied === 0 || !userId) return;
 
-    try {
-      const timeSpent = Math.floor((Date.now() - sessionStartTime) / 1000);
+  try {
+    const timeSpent = Math.floor((Date.now() - sessionStartTime) / 1000);
 
-      // Prepare cards data with subtopic
-      const cardsData = flashcards.map(card => {
-        // Only include cards that were studied this session
-        if (card.lastResult !== null) {
-          return {
-            cardId: card.id.toString(),
-            question: card.question,
-            answer: card.answer,
-            subtopic: topic || 'general', // Use topic as subtopic
-            attempts: card.attempts || 0,
-            correctAttempts: card.correct || 0
-          };
-        }
-        return null;
-      }).filter(Boolean); // Remove null entries
+    // Prepare cards data with subtopic
+    const cardsData = flashcards.map(card => {
+      // Only include cards that were studied this session
+      if (card.lastResult !== null) {
+        return {
+          cardId: card.id.toString(),
+          question: card.question,
+          answer: card.answer,
+          subtopic: topic || 'general', // Use topic as subtopic
+          attempts: card.attempts || 0,
+          correctAttempts: card.correct || 0
+        };
+      }
+      return null;
+    }).filter(Boolean); // Remove null entries
 
-      // Prepare session data
-      const sessionData = {
-        cardsStudied: sessionStats.cardsStudied,
-        correctAnswers: sessionStats.correctAnswers,
-        timeSpent,
-        subtopic: topic || 'general' // Use topic as subtopic
-      };
+    // Prepare session data - ensure these are always numbers
+    const sessionData = {
+      cardsStudied: sessionStats.cardsStudied,
+      correctAnswers: sessionStats.correctAnswers,
+      timeSpent,
+      subtopic: topic || 'general' // Use topic as subtopic
+    };
 
-      console.log("Saving flashcard performance:", {
-        userId,
-        tutor,
-        topic: topicName || tutor,
-        subtopic: topic || 'general',
-        activityType: 'flashcard',
-        sessionData,
-        cardsData: cardsData.length
-      });
+    console.log("Saving flashcard performance:", {
+      userId,
+      tutor,
+      topic: topicName || tutor,
+      subtopic: topic || 'general',
+      activityType: 'flashcard',
+      sessionData,
+      cardsData: cardsData.length
+    });
 
-      // Send data to server
-      await updatePerformanceData({
-        userId,
-        tutor,
-        topic: topicName || tutor,
-        subtopic: topic || 'general',
-        activityType: 'flashcard',
-        sessionData,
-        cardsData
-      });
+    // Send data to server
+    const response = await updatePerformanceData({
+      userId,
+      tutor,
+      topic: topicName || tutor,
+      subtopic: topic || 'general',
+      activityType: 'flashcard',
+      sessionData,
+      sessions: [sessionData], // Add sessions array with the same data
+      cards: cardsData // Change from cardsData to cards for consistency
+    });
 
-      console.log("Flashcard session saved successfully");
-
-    } catch (error) {
-      console.error('Error saving session data:', error);
-      // Don't show errors to user for this process
+    if (response) {
+      console.log("Flashcard session saved successfully, response:", response);
+    } else {
+      console.log("Flashcard session queued for saving");
     }
-  };
+
+  } catch (error) {
+    console.error('Error saving session data:', error);
+    // Don't show errors to user for this process
+  }
+};
 
   const flipCard = () => {
     if (showAnswer) {

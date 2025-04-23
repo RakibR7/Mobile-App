@@ -5,7 +5,8 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { StatusBar } from 'expo-status-bar';
 import { ActivityIndicator, View } from 'react-native';
 
-// Auth Context
+// Context Providers
+import { UserProvider } from './context/UserContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 
 // Navigators
@@ -23,6 +24,7 @@ import FlashcardsScreen from './screens/FlashcardsScreen';
 import SubtopicProgressScreen from './screens/SubtopicProgressScreen';
 import QuizHistoryScreen from './screens/QuizHistoryScreen';
 import FlashcardHistoryScreen from './screens/FlashcardHistoryScreen';
+import ProfileScreen from './screens/ProfileScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -113,20 +115,28 @@ const AppNavigator = () => {
             component={FlashcardHistoryScreen}
             options={{ title: 'Flashcard History' }}
           />
+          <Stack.Screen
+            name="Profile"
+            component={ProfileScreen}
+            options={{ title: 'My Profile' }}
+          />
         </Stack.Navigator>
       ) : (
+        // No user signed in - show authentication screens
         <AuthNavigator />
       )}
     </NavigationContainer>
   );
 };
 
-// Wrap the app with auth provider
+// Wrap the app with both context providers
 export default function App() {
   return (
-    <AuthProvider>
-      <AppNavigator />
-      <StatusBar style="light" />
-    </AuthProvider>
+    <UserProvider>
+      <AuthProvider>
+        <AppNavigator />
+        <StatusBar style="light" />
+      </AuthProvider>
+    </UserProvider>
   );
 }

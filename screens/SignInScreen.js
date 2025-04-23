@@ -1,4 +1,4 @@
-// screens/SignInScreen.js
+// screens/SignInScreen.js (update)
 import React, { useState } from 'react';
 import {
   View,
@@ -10,13 +10,12 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
-  Alert,
-  Image
+  Alert
 } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 
 const SignInScreen = ({ navigation }) => {
-  const { signIn, loading } = useAuth();
+  const { signIn, loading, isOffline } = useAuth();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -57,14 +56,18 @@ const SignInScreen = ({ navigation }) => {
     >
       <ScrollView contentContainerStyle={styles.scrollContainer}>
         <View style={styles.logoContainer}>
-          <Image
-            source={require('../assets/mentor-logo.png')}
-            style={styles.logo}
-            resizeMode="contain"
-          />
+          <Text style={styles.logoText}>AI Mentor</Text>
           <Text style={styles.title}>Welcome Back</Text>
           <Text style={styles.subtitle}>Log in to continue learning</Text>
         </View>
+
+        {isOffline && (
+          <View style={styles.offlineNotice}>
+            <Text style={styles.offlineText}>
+              You are currently offline. You can still log in with cached credentials.
+            </Text>
+          </View>
+        )}
 
         <View style={styles.formContainer}>
           <View style={styles.inputContainer}>
@@ -93,7 +96,13 @@ const SignInScreen = ({ navigation }) => {
           </View>
 
           <TouchableOpacity
-            onPress={() => navigation.navigate('ForgotPassword')}
+            onPress={() => {
+              if (isOffline) {
+                Alert.alert('Offline Mode', 'Password reset is not available while offline. Please try again when you have a network connection.');
+              } else {
+                navigation.navigate('ForgotPassword');
+              }
+            }}
             style={styles.forgotPasswordContainer}
           >
             <Text style={styles.forgotPasswordText}>Forgot password?</Text>
@@ -114,7 +123,13 @@ const SignInScreen = ({ navigation }) => {
 
         <View style={styles.footerContainer}>
           <Text style={styles.footerText}>Don't have an account?</Text>
-          <TouchableOpacity onPress={() => navigation.navigate('SignUp')}>
+          <TouchableOpacity onPress={() => {
+            if (isOffline) {
+              Alert.alert('Offline Mode', 'Registration is not available while offline. Please try again when you have a network connection.');
+            } else {
+              navigation.navigate('SignUp');
+            }
+          }}>
             <Text style={styles.signUpLink}>Sign Up</Text>
           </TouchableOpacity>
         </View>
@@ -137,10 +152,11 @@ const styles = StyleSheet.create({
     marginTop: 40,
     marginBottom: 40,
   },
-  logo: {
-    width: 100,
-    height: 100,
-    marginBottom: 15,
+  logoText: {
+    fontSize: 36,
+    fontWeight: 'bold',
+    color: '#4CAF50',
+    marginBottom: 20,
   },
   title: {
     fontSize: 28,

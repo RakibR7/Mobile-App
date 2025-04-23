@@ -10,8 +10,7 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
-  Alert,
-  Image
+  Alert
 } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 
@@ -74,11 +73,7 @@ const SignUpScreen = ({ navigation }) => {
     >
       <ScrollView contentContainerStyle={styles.scrollContainer}>
         <View style={styles.logoContainer}>
-          <Image
-            source={require('../assets/mentor-logo.png')}
-            style={styles.logo}
-            resizeMode="contain"
-          />
+          <Text style={styles.logoText}>AI Mentor</Text>
           <Text style={styles.title}>Create Account</Text>
           <Text style={styles.subtitle}>Sign up to start learning</Text>
         </View>
@@ -171,10 +166,11 @@ const styles = StyleSheet.create({
     marginTop: 20,
     marginBottom: 30,
   },
-  logo: {
-    width: 100,
-    height: 100,
-    marginBottom: 15,
+  logoText: {
+    fontSize: 36,
+    fontWeight: 'bold',
+    color: '#4CAF50',
+    marginBottom: 20,
   },
   title: {
     fontSize: 28,

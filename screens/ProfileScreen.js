@@ -142,7 +142,7 @@ const ProfileScreen = ({ navigation }) => {
 
           <TouchableOpacity
             style={styles.menuItem}
-            onPress={() => navigation.navigate('LearningProgress')}
+            onPress={() => navigation.navigate('SubtopicProgress', { tutor: 'biology' })}
           >
             <Text style={styles.menuItemText}>Learning Progress</Text>
             <Text style={styles.menuItemIcon}>→</Text>
@@ -150,7 +150,7 @@ const ProfileScreen = ({ navigation }) => {
 
           <TouchableOpacity
             style={styles.menuItem}
-            onPress={() => navigation.navigate('Settings')}
+            onPress={() => Alert.alert('Coming Soon', 'This feature will be available in a future update.')}
           >
             <Text style={styles.menuItemText}>Settings</Text>
             <Text style={styles.menuItemIcon}>→</Text>
@@ -158,7 +158,7 @@ const ProfileScreen = ({ navigation }) => {
 
           <TouchableOpacity
             style={styles.menuItem}
-            onPress={() => navigation.navigate('Help')}
+            onPress={() => Alert.alert('Coming Soon', 'This feature will be available in a future update.')}
           >
             <Text style={styles.menuItemText}>Help & Support</Text>
             <Text style={styles.menuItemIcon}>→</Text>

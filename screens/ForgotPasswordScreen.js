@@ -9,8 +9,7 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
-  Alert,
-  Image
+  Alert
 } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 
@@ -51,11 +50,7 @@ const ForgotPasswordScreen = ({ navigation }) => {
     return (
       <View style={styles.container}>
         <View style={styles.successContainer}>
-          <Image
-            source={require('../assets/email-sent.png')}
-            style={styles.successImage}
-            resizeMode="contain"
-          />
+          <Text style={styles.emailIcon}>✉️</Text>
           <Text style={styles.successTitle}>Check Your Email</Text>
           <Text style={styles.successText}>
             We've sent password reset instructions to {email}
@@ -202,9 +197,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 20,
   },
-  successImage: {
-    width: 120,
-    height: 120,
+  emailIcon: {
+    fontSize: 50,
     marginBottom: 20,
   },
   successTitle: {

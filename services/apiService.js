@@ -175,7 +175,7 @@ export const deleteConversation = async (id, tutor) => {
   }
 };
 
-// Get user performance data with error fallback
+// Updated getPerformanceData function to fix flashcard history issues
 export const getPerformanceData = async (userId, tutor, topic, activityType) => {
   try {
     let url = `${API_BASE_URL}/api/performance?userId=${userId}`;
@@ -185,15 +185,41 @@ export const getPerformanceData = async (userId, tutor, topic, activityType) => 
 
     console.log('Fetching performance data from:', url);
 
-    const response = await fetchWithTimeout(url, {}, 5000);
+    const response = await fetchWithTimeout(url, {}, 8000); // Increased timeout
 
     if (!response.ok) {
       console.error(`Performance data request failed with status ${response.status}`);
+      // Try to get error details
+      try {
+        const errorData = await response.json();
+        console.error('Error details:', errorData);
+      } catch (e) {
+        // Ignore error parsing errors
+      }
       return [];
     }
 
     const result = await response.json();
     console.log(`Found ${result.length} ${activityType || ''} history records`);
+
+    // Add some additional logging to help debug
+    if (result.length > 0) {
+      console.log('Sample record structure:',
+        JSON.stringify({
+          _id: result[0]._id,
+          userId: result[0].userId,
+          tutor: result[0].tutor,
+          topic: result[0].topic,
+          subtopic: result[0].subtopic,
+          activityType: result[0].activityType,
+          hasSessionData: !!result[0].sessionData,
+          hasSessions: !!result[0].sessions,
+          sessionsCount: result[0].sessions?.length || 0,
+          createdAt: result[0].createdAt
+        })
+      );
+    }
+
     return result;
   } catch (error) {
     console.error("Error fetching performance data:", error);
@@ -223,10 +249,7 @@ export const getSubtopicProgress = async (userId, tutor) => {
   }
 };
 
-// Update performance data with queue mechanism for offline support
-let performanceUpdateQueue = [];
-let isProcessingQueue = false;
-
+// Updated updatePerformanceData function in apiService.js
 export const updatePerformanceData = async (performanceData) => {
   // Add current update to queue
   performanceUpdateQueue.push(performanceData);
@@ -240,32 +263,59 @@ export const updatePerformanceData = async (performanceData) => {
   while (performanceUpdateQueue.length > 0) {
     const currentData = performanceUpdateQueue[0];
     try {
+      // Ensure all numeric values are numbers, not strings
+      if (currentData.sessionData) {
+        currentData.sessionData.cardsStudied = Number(currentData.sessionData.cardsStudied || 0);
+        currentData.sessionData.correctAnswers = Number(currentData.sessionData.correctAnswers || 0);
+        currentData.sessionData.timeSpent = Number(currentData.sessionData.timeSpent || 0);
+      }
+
+      // Also normalize the sessions array if present
+      if (currentData.sessions && Array.isArray(currentData.sessions)) {
+        currentData.sessions.forEach(session => {
+          session.cardsStudied = Number(session.cardsStudied || 0);
+          session.correctAnswers = Number(session.correctAnswers || 0);
+          session.timeSpent = Number(session.timeSpent || 0);
+        });
+      }
+
       console.log(`Saving ${currentData.activityType} performance:`, {
         activityType: currentData.activityType,
-        cardsData: currentData.cardsData?.length || 0,
+        cards: currentData.cards?.length || 0,
         sessionData: currentData.sessionData,
+        sessions: !!currentData.sessions,
         subtopic: currentData.subtopic,
         topic: currentData.topic,
         tutor: currentData.tutor,
-        userId: currentData.userId
       });
 
-      const response = await fetchWithTimeout(
-        `${API_BASE_URL}/api/performance`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(currentData)
-        },
-        8000
-      );
+      try {
+        const response = await fetchWithTimeout(
+          `${API_BASE_URL}/api/performance`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(currentData)
+          },
+          8000
+        );
 
-      if (!response.ok) {
-        console.error(`Failed to update performance data: ${response.status}`);
-        // We'll consider this a permanent failure and remove from queue
+        if (!response.ok) {
+          console.error(`Failed to update performance data: ${response.status}`);
+          // We'll consider this a permanent failure and remove from queue
+        } else {
+          const responseData = await response.json();
+          console.log(`${currentData.activityType} session saved successfully`, responseData);
+        }
+      } catch (fetchError) {
+        console.error("Fetch error during performance update:", fetchError);
+        // Keep in queue if it's a network issue
+        if (fetchError.name === 'TypeError' || fetchError.name === 'AbortError') {
+          // For network errors, stop processing for now and retry later
+          isProcessingQueue = false;
+          return null;
+        }
       }
-
-      console.log(`${currentData.activityType} session saved successfully`);
 
       // Remove processed item
       performanceUpdateQueue.shift();

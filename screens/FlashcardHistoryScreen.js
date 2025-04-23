@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, FlatList,
-  ActivityIndicator, ScrollView, RefreshControl
+  ActivityIndicator, ScrollView, RefreshControl, Alert
 } from 'react-native';
 import { useUser } from '../context/UserContext';
 import { getPerformanceData } from '../services/apiService';
@@ -22,6 +22,14 @@ export default function FlashcardHistoryScreen({ route, navigation }) {
     totalTime: 0
   });
 
+  // For debugging
+  const [debugInfo, setDebugInfo] = useState({
+    requestParams: {},
+    responseRaw: null,
+    processedData: null,
+    error: null
+  });
+
   useEffect(() => {
     fetchHistory();
   }, []);
@@ -36,33 +44,110 @@ export default function FlashcardHistoryScreen({ route, navigation }) {
     setLoading(true);
     setError(null);
 
+    // Store debug info
+    const requestParams = {
+      userId,
+      tutor,
+      topic,
+      activityType: 'flashcard'
+    };
+    setDebugInfo(prev => ({ ...prev, requestParams }));
+
     try {
-      const data = await getPerformanceData(
+      console.log(`Fetching flashcard history for user ${userId}, tutor ${tutor || 'any'}, topic ${topic || 'any'}`);
+
+      // First try with specific topic
+      let rawData = await getPerformanceData(
         userId,
         tutor,
         topic,
         'flashcard'
       );
 
-      if (!Array.isArray(data)) {
+      // Store the raw response for debugging
+      setDebugInfo(prev => ({ ...prev, responseRaw: rawData }));
+
+      console.log(`Found ${rawData?.length || 0} flashcard history records with specific topic`);
+
+      // If no results with specific topic, try more broadly
+      if (!rawData || rawData.length === 0) {
+        console.log('No records found with specific topic, trying broader search');
+        rawData = await getPerformanceData(
+          userId,
+          tutor,
+          null, // Try without topic filter
+          'flashcard'
+        );
+        console.log(`Found ${rawData?.length || 0} flashcard history records with broader search`);
+      }
+
+      if (!Array.isArray(rawData)) {
         throw new Error("Invalid data format received from server");
       }
 
-      setSessions(data);
+      // Process and normalize the data
+      const processedData = rawData.map(session => {
+        // Extract or calculate session statistics
+        let sessionCards = 0;
+        let sessionCorrect = 0;
+        let sessionTime = 0;
+
+        // Look for session data in all possible locations
+        if (session.sessionData) {
+          // Direct sessionData format
+          sessionCards = parseInt(session.sessionData.cardsStudied || 0);
+          sessionCorrect = parseInt(session.sessionData.correctAnswers || 0);
+          sessionTime = parseInt(session.sessionData.timeSpent || 0);
+        } else if (session.sessions && Array.isArray(session.sessions)) {
+          // Nested sessions format
+          session.sessions.forEach(s => {
+            sessionCards += parseInt(s.cardsStudied || 0);
+            sessionCorrect += parseInt(s.correctAnswers || 0);
+            sessionTime += parseInt(s.timeSpent || 0);
+          });
+        } else if (session.cards && Array.isArray(session.cards)) {
+          // Try to derive from cards array
+          sessionCards = session.cards.length;
+          sessionCorrect = session.cards.filter(card =>
+            card.correctAttempts && card.correctAttempts > 0
+          ).length;
+        }
+
+        // If we have cards data but no explicit session time, use a default
+        if (sessionCards > 0 && sessionTime === 0) {
+          sessionTime = sessionCards * 30; // Estimate 30 seconds per card
+        }
+
+        return {
+          ...session,
+          processedStats: {
+            sessionCards,
+            sessionCorrect,
+            sessionTime,
+            accuracy: sessionCards > 0 ? Math.round((sessionCorrect / sessionCards) * 100) : 0
+          }
+        };
+      });
+
+      // Store the processed data for debugging
+      setDebugInfo(prev => ({ ...prev, processedData }));
+
+      // Only show sessions with actual data
+      const validSessions = processedData.filter(
+        session => session.processedStats.sessionCards > 0
+      );
+
+      setSessions(validSessions);
 
       // Calculate overall stats
       let totalCards = 0;
       let totalCorrect = 0;
       let totalTime = 0;
 
-      data.forEach(session => {
-        if (session.sessions && Array.isArray(session.sessions)) {
-          session.sessions.forEach(s => {
-            totalCards += s.cardsStudied || 0;
-            totalCorrect += s.correctAnswers || 0;
-            totalTime += s.timeSpent || 0;
-          });
-        }
+      validSessions.forEach(session => {
+        totalCards += session.processedStats.sessionCards;
+        totalCorrect += session.processedStats.sessionCorrect;
+        totalTime += session.processedStats.sessionTime;
       });
 
       setStats({
@@ -74,8 +159,8 @@ export default function FlashcardHistoryScreen({ route, navigation }) {
 
     } catch (error) {
       console.error('Error fetching flashcard history:', error);
-      setError("Couldn't load history data. " + error.message);
-      // Keep whatever data we might have already
+      setError("Couldn't load history data: " + error.message);
+      setDebugInfo(prev => ({ ...prev, error: error.toString() }));
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -106,6 +191,50 @@ export default function FlashcardHistoryScreen({ route, navigation }) {
     }
   };
 
+  const showFullDebugInfo = () => {
+    console.log("Debug Info:", JSON.stringify(debugInfo, null, 2));
+
+    Alert.alert(
+      'Debug Information',
+      'Full debug info has been logged to console.\n\n' +
+      `Request Params: ${JSON.stringify(debugInfo.requestParams)}\n\n` +
+      `Sessions Found: ${sessions.length}\n\n` +
+      `Total Cards: ${stats.totalCards}\n\n` +
+      `Raw Data Sample: ${JSON.stringify(debugInfo.responseRaw?.[0]?.sessionData || {})}\n\n` +
+      `Error: ${debugInfo.error || 'None'}`,
+      [{ text: 'OK' }]
+    );
+  };
+
+  const showDataStructure = () => {
+    if (debugInfo.responseRaw && debugInfo.responseRaw.length > 0) {
+      const sample = debugInfo.responseRaw[0];
+      let structure = {
+        _id: !!sample._id,
+        userId: !!sample.userId,
+        tutor: sample.tutor,
+        topic: sample.topic,
+        subtopic: sample.subtopic,
+        activityType: sample.activityType,
+        hasSessionData: !!sample.sessionData,
+        sessionDataStructure: sample.sessionData ? Object.keys(sample.sessionData) : null,
+        hasSessions: !!sample.sessions,
+        sessionsCount: sample.sessions?.length || 0,
+        hasCards: !!sample.cards,
+        cardsCount: sample.cards?.length || 0,
+        createdAt: !!sample.createdAt
+      };
+
+      Alert.alert(
+        'Data Structure',
+        JSON.stringify(structure, null, 2),
+        [{ text: 'OK' }]
+      );
+    } else {
+      Alert.alert('No Data', 'No record found to analyze structure');
+    }
+  };
+
   if (loading && !refreshing) {
     return (
       <View style={styles.loadingContainer}>
@@ -127,9 +256,20 @@ export default function FlashcardHistoryScreen({ route, navigation }) {
         />
       }
     >
-      <Text style={styles.title}>Flashcard History</Text>
+      <View style={styles.headerRow}>
+        <Text style={styles.title}>Flashcard History</Text>
+        <View style={styles.debugButtons}>
+          <TouchableOpacity onPress={showDataStructure} style={styles.debugButton}>
+            <Text style={styles.debugButtonText}>Structure</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={showFullDebugInfo} style={styles.debugButton}>
+            <Text style={styles.debugButtonText}>Debug</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
       <Text style={styles.subtitle}>
-        {tutor ? `Tutor: ${tutor}` : 'All Tutors'},
+        {tutor ? `Tutor: ${tutor}` : 'All Tutors'}
         {topic ? ` Topic: ${topic}` : ' All Topics'}
       </Text>
 
@@ -177,20 +317,7 @@ export default function FlashcardHistoryScreen({ route, navigation }) {
           <Text style={styles.sectionTitle}>Recent Sessions</Text>
 
           {sessions.map((item, index) => {
-            // Calculate session stats
-            let sessionCards = 0;
-            let sessionCorrect = 0;
-            let sessionTime = 0;
-
-            if (item.sessions && Array.isArray(item.sessions) && item.sessions.length > 0) {
-              item.sessions.forEach(s => {
-                sessionCards += s.cardsStudied || 0;
-                sessionCorrect += s.correctAnswers || 0;
-                sessionTime += s.timeSpent || 0;
-              });
-            }
-
-            const accuracy = sessionCards > 0 ? Math.round((sessionCorrect / sessionCards) * 100) : 0;
+            const { sessionCards, sessionCorrect, sessionTime, accuracy } = item.processedStats;
 
             return (
               <View key={item._id || index} style={styles.sessionCard}>
@@ -198,7 +325,7 @@ export default function FlashcardHistoryScreen({ route, navigation }) {
                   {formatDate(item.createdAt || new Date())}
                 </Text>
                 <Text style={styles.sessionTopic}>
-                  {item.topic || 'Unknown Topic'}
+                  {item.topic || item.subtopic || 'Unknown Topic'}
                 </Text>
 
                 <View style={styles.sessionStats}>
@@ -243,6 +370,19 @@ export default function FlashcardHistoryScreen({ route, navigation }) {
       >
         <Text style={styles.buttonText}>Go Back</Text>
       </TouchableOpacity>
+
+      {topic && (
+        <TouchableOpacity
+          style={[styles.button, styles.practiceButton]}
+          onPress={() => navigation.navigate('FlashcardsScreen', {
+            tutor,
+            topic,
+            topicName: topic
+          })}
+        >
+          <Text style={styles.buttonText}>Practice More</Text>
+        </TouchableOpacity>
+      )}
     </ScrollView>
   );
 }
@@ -252,6 +392,24 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 20,
     backgroundColor: '#f5f5f5',
+  },
+  headerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  debugButtons: {
+    flexDirection: 'row',
+  },
+  debugButton: {
+    padding: 5,
+    backgroundColor: '#f0f0f0',
+    borderRadius: 4,
+    marginLeft: 5,
+  },
+  debugButtonText: {
+    fontSize: 12,
+    color: '#666',
   },
   loadingContainer: {
     flex: 1,
@@ -404,8 +562,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     borderRadius: 5,
     marginTop: 10,
-    marginBottom: 30,
+    marginBottom: 10,
     alignSelf: 'center',
+  },
+  practiceButton: {
+    backgroundColor: '#2196F3',
+    marginBottom: 30,
   },
   buttonText: {
     color: '#fff',

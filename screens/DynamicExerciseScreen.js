@@ -6,6 +6,7 @@ import {
 } from 'react-native';
 import { useUser } from '../context/UserContext';
 import { updatePerformanceData, getPerformanceData } from '../services/apiService';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Default questions by topic
 const getDefaultQuestions = (topic, tutor) => {
@@ -136,27 +137,56 @@ export default function DynamicExerciseScreen({ route, navigation }) {
     }
   };
 
-  // Fixed generateQuestions function for DynamicExerciseScreen.js
   const generateQuestions = async () => {
     setLoading(true);
     setNetworkError(false);
 
     try {
+      // Get the user's preferred difficulty level
+      let difficulty = 'normal'; // Default
+      try {
+        const savedDifficulty = await AsyncStorage.getItem('questionDifficulty');
+        if (savedDifficulty) {
+          difficulty = savedDifficulty;
+        }
+      } catch (error) {
+        console.log('Could not load difficulty setting:', error);
+      }
+
+      // Get the appropriate model based on tutor
+      const tutorModel = {
+        biology: 'ft:gpt-3.5-turbo-0125:personal:csp-biology-finetuning-data10-20000:BJN7IqeS',
+        python: 'ft:gpt-3.5-turbo-0125:personal:dr1-csv6-shortened-3381:B0DlvD7p'
+      }[tutor] || 'gpt-3.5-turbo';
+
       // Generate unique identifier for variety
       const uniqueId = Math.random().toString(36).substring(2, 8);
 
-      const prompt = `Create 3 challenging practice questions about ${topicName} in ${tutor}.
-      Make these questions test understanding and be different from typical textbook questions.
+      // Create difficulty-specific guidance
+      let difficultyGuide = '';
+      if (difficulty === 'easy') {
+        difficultyGuide = 'Create beginner-friendly questions that focus on basic concepts and definitions. Use simple language and provide clear context. These should help build foundational knowledge.';
+      } else if (difficulty === 'normal') {
+        difficultyGuide = 'Create moderately challenging questions that test understanding and application of concepts. Include some analytical thinking but maintain accessibility.';
+      } else if (difficulty === 'hard') {
+        difficultyGuide = 'Create challenging, exam-style questions that require deep understanding, critical thinking, and application of multiple concepts. These should prepare students for advanced assessments.';
+      }
+
+      const prompt = `Create 3 ${difficulty} difficulty practice questions about ${topicName} in ${tutor}.
+      ${difficultyGuide}
+      Make these questions unique and not generic textbook questions.
       ID: ${uniqueId}
       Format as JSON array with structure [{"id": 1, "question": "question text"}].
       Only return the JSON, no other text.`;
+
+      console.log(`Using model ${tutorModel} for quiz generation with ${difficulty} difficulty`);
 
       const response = await fetch('http://51.21.106.225:5000/api/openai', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           message: prompt,
-          model: 'gpt-3.5-turbo',
+          model: tutorModel, // Use the subject-specific model
           tutor
         }),
         timeout: 15000
@@ -186,24 +216,44 @@ export default function DynamicExerciseScreen({ route, navigation }) {
         } else {
           throw new Error("Unexpected response format");
         }
+
+        // Add difficulty property
+        parsedQuestions = parsedQuestions.map((q, idx) => ({
+          ...q,
+          difficulty: difficulty
+        }));
       } catch (parseError) {
         console.error('Error parsing questions:', parseError);
 
-        // Use default questions as fallback
+        // Use default questions as fallback, but adjust for difficulty
+        let fallbackQuestions;
         if (tutor === 'biology' && topic === 'cells') {
-          parsedQuestions = getCellsQuestions();
+          fallbackQuestions = getCellsQuestions();
         } else {
-          parsedQuestions = getDefaultQuestions(topicName, tutor);
+          fallbackQuestions = getDefaultQuestions(topicName, tutor);
         }
 
-        // Add some variation to the questions
-        parsedQuestions = parsedQuestions.map(q => ({
-          ...q,
-          question: q.question + ` (Consider the applications in ${new Date().toLocaleDateString()}).`
-        }));
+        // Modify questions based on difficulty
+        fallbackQuestions = fallbackQuestions.map(q => {
+          let modifiedQuestion = q.question;
+
+          if (difficulty === 'easy') {
+            modifiedQuestion = `[Beginner] ${q.question} Explain in simple terms.`;
+          } else if (difficulty === 'normal') {
+            modifiedQuestion = `[Intermediate] ${q.question} Provide a thorough explanation.`;
+          } else if (difficulty === 'hard') {
+            modifiedQuestion = `[Advanced] ${q.question} Analyze in depth and discuss broader implications.`;
+          }
+
+          return {
+            ...q,
+            question: modifiedQuestion,
+            difficulty: difficulty
+          };
+        });
 
         // Randomize order
-        parsedQuestions = parsedQuestions.sort(() => Math.random() - 0.5);
+        parsedQuestions = fallbackQuestions.sort(() => Math.random() - 0.5);
       }
 
       setShowQuizOptions(false);
@@ -221,6 +271,17 @@ export default function DynamicExerciseScreen({ route, navigation }) {
       console.error('Error generating questions:', error);
       setNetworkError(true);
 
+      // Try to get the saved difficulty
+      let difficulty = 'normal';
+      try {
+        const savedDifficulty = await AsyncStorage.getItem('questionDifficulty');
+        if (savedDifficulty) {
+          difficulty = savedDifficulty;
+        }
+      } catch (err) {
+        console.log('Could not load difficulty setting on error:', err);
+      }
+
       // Use default questions as fallback
       let fallbackQuestions;
       if (tutor === 'biology' && topic === 'cells') {
@@ -229,11 +290,25 @@ export default function DynamicExerciseScreen({ route, navigation }) {
         fallbackQuestions = getDefaultQuestions(topicName, tutor);
       }
 
-      // Add variation to fallback questions
-      fallbackQuestions = fallbackQuestions.map(q => ({
-        ...q,
-        question: q.question + ` (Focus specifically on recent developments).`
-      })).sort(() => Math.random() - 0.5);
+      // Add difficulty-based modifications
+      fallbackQuestions = fallbackQuestions.map(q => {
+        let modifiedQuestion = q.question;
+
+        // Modify question based on difficulty
+        if (difficulty === 'easy') {
+          modifiedQuestion = `[Beginner Level] ${q.question}`;
+        } else if (difficulty === 'normal') {
+          modifiedQuestion = `[Standard Level] ${q.question}`;
+        } else if (difficulty === 'hard') {
+          modifiedQuestion = `[Advanced Level] ${q.question}`;
+        }
+
+        return {
+          ...q,
+          question: modifiedQuestion,
+          difficulty: difficulty
+        };
+      }).sort(() => Math.random() - 0.5);
 
       setQuestions(fallbackQuestions);
       setShowQuizOptions(false);
@@ -249,38 +324,6 @@ export default function DynamicExerciseScreen({ route, navigation }) {
     } finally {
       setLoading(false);
     }
-  };
-
-  const startRevision = () => {
-    if (previousQuestions.length === 0) {
-      Alert.alert(
-        'No Previous Questions',
-        'You haven\'t completed any quizzes on this topic yet. Would you like to generate new questions?',
-        [
-          {
-            text: 'Generate New Questions',
-            onPress: generateQuestions
-          },
-          {
-            text: 'Cancel',
-            style: 'cancel'
-          }
-        ]
-      );
-      return;
-    }
-
-    setShowQuizOptions(false);
-    setQuestions(previousQuestions);
-    setCurrentQuestionIndex(0);
-    setAnswers({});
-    setFeedback({});
-    setSessionStats({
-      questionsAttempted: 0,
-      correctAnswers: 0,
-      timeSpent: 0
-    });
-    setSessionStartTime(Date.now());
   };
 
   const saveSession = async () => {
@@ -331,7 +374,7 @@ export default function DynamicExerciseScreen({ route, navigation }) {
         subtopic: topic || 'general',
         activityType: 'quiz',
         sessionData,
-        cardsData
+        cards: cardsData
       });
 
       console.log("Quiz session saved successfully");
@@ -357,16 +400,33 @@ export default function DynamicExerciseScreen({ route, navigation }) {
     try {
       const currentQuestion = questions[currentQuestionIndex];
       const userAnswer = answers[currentQuestion.id];
+      const questionDifficulty = currentQuestion.difficulty || 'normal';
+
+      // Get the appropriate model based on tutor
+      const tutorModel = {
+        biology: 'ft:gpt-3.5-turbo-0125:personal:csp-biology-finetuning-data10-20000:BJN7IqeS',
+        python: 'ft:gpt-3.5-turbo-0125:personal:dr1-csv6-shortened-3381:B0DlvD7p'
+      }[tutor] || 'gpt-3.5-turbo';
+
+      // Adjust feedback style based on difficulty
+      let difficultyGuidance = '';
+      if (questionDifficulty === 'easy') {
+        difficultyGuidance = `This is a beginner-level question. Be encouraging and supportive in your feedback. Focus on clarifying basic concepts and providing simple explanations. Use friendly, accessible language.`;
+      } else if (questionDifficulty === 'normal') {
+        difficultyGuidance = `This is an intermediate-level question. Provide balanced feedback that acknowledges strengths and identifies areas for improvement. Include moderate detail in explanations.`;
+      } else if (questionDifficulty === 'hard') {
+        difficultyGuidance = `This is an advanced-level question. Provide thorough, detailed feedback with rigorous analysis. Point out nuances and deeper connections. Set high standards for accuracy and completeness.`;
+      }
 
       // Send the question and answer to the AI for evaluation
-      const prompt = `Question: "${currentQuestion.question}"\n\nStudent's answer: "${userAnswer}"\n\nEvaluate this answer for a ${tutor} student studying ${topicName}. Provide detailed feedback on the answer's correctness, completeness, and areas for improvement. Format your response as JSON: {"correct": true/false, "feedback": "your detailed feedback here"}`;
+      const prompt = `Question: "${currentQuestion.question}"\n\nStudent's answer: "${userAnswer}"\n\n${difficultyGuidance}\n\nEvaluate this answer for a ${tutor} student studying ${topicName}. Provide detailed feedback on the answer's correctness, completeness, and areas for improvement. Format your response as JSON: {"correct": true/false, "feedback": "your detailed feedback here"}`;
 
       const response = await fetch('http://51.21.106.225:5000/api/openai', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           message: prompt,
-          model: 'gpt-3.5-turbo',
+          model: tutorModel,
           tutor
         }),
         timeout: 15000 // Longer timeout for evaluation responses
@@ -398,15 +458,18 @@ export default function DynamicExerciseScreen({ route, navigation }) {
         }
       } catch (parseError) {
         console.error('Error parsing evaluation:', parseError);
+
         // Provide a basic evaluation when parsing fails
         evaluation = {
           correct: false,
-          feedback: "I couldn't properly analyze your answer. Please try again with more details."
+          feedback: `I couldn't properly analyze your answer. Here's some general guidance on this ${questionDifficulty} question: The question is asking about ${currentQuestion.question.split(' ').slice(0, 5).join(' ')}... When answering, focus on key concepts and provide specific examples. Try to be precise and thorough in your explanation.`
         };
       }
 
       // Add 'evaluated' flag to the feedback
       evaluation.evaluated = true;
+      // Also add difficulty level
+      evaluation.difficulty = questionDifficulty;
 
       // Update feedback state with the evaluation
       setFeedback({
@@ -424,11 +487,15 @@ export default function DynamicExerciseScreen({ route, navigation }) {
     } catch (error) {
       console.error('Error evaluating answer:', error);
 
+      // Get the current difficulty
+      const questionDifficulty = questions[currentQuestionIndex].difficulty || 'normal';
+
       // Provide a fallback evaluation when the API call fails
       const fallbackEvaluation = {
         correct: false,
-        feedback: "Unable to evaluate your answer due to a connection issue. Please check your network connection and try again.",
-        evaluated: true
+        feedback: `Unable to evaluate your answer at this time. For this ${questionDifficulty} level question, consider reviewing the key concepts related to ${topicName} and try again.`,
+        evaluated: true,
+        difficulty: questionDifficulty
       };
 
       setFeedback({
@@ -487,6 +554,38 @@ export default function DynamicExerciseScreen({ route, navigation }) {
         ]
       );
     }
+  };
+
+  const startRevision = () => {
+    if (previousQuestions.length === 0) {
+      Alert.alert(
+        'No Previous Questions',
+        'You haven\'t completed any quizzes on this topic yet. Would you like to generate new questions?',
+        [
+          {
+            text: 'Generate New Questions',
+            onPress: generateQuestions
+          },
+          {
+            text: 'Cancel',
+            style: 'cancel'
+          }
+        ]
+      );
+      return;
+    }
+
+    setShowQuizOptions(false);
+    setQuestions(previousQuestions);
+    setCurrentQuestionIndex(0);
+    setAnswers({});
+    setFeedback({});
+    setSessionStats({
+      questionsAttempted: 0,
+      correctAnswers: 0,
+      timeSpent: 0
+    });
+    setSessionStartTime(Date.now());
   };
 
   const viewProgress = () => {
@@ -598,6 +697,20 @@ export default function DynamicExerciseScreen({ route, navigation }) {
       </View>
 
       <View style={styles.questionContainer}>
+        {currentQuestion?.difficulty && (
+          <View style={[
+            styles.difficultyBadge,
+            currentQuestion.difficulty === 'easy' ? styles.easyBadge :
+            currentQuestion.difficulty === 'hard' ? styles.hardBadge :
+            styles.normalBadge
+          ]}>
+            <Text style={styles.difficultyText}>
+              {currentQuestion.difficulty === 'easy' ? 'Easy' :
+               currentQuestion.difficulty === 'hard' ? 'Hard' :
+               'Normal'}
+            </Text>
+          </View>
+        )}
         <Text style={styles.question}>{currentQuestion?.question}</Text>
 
         <TextInput
@@ -783,128 +896,149 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
   },
-  question: {
-    fontSize: 18,
-    fontWeight: '500',
-    marginBottom: 20,
-    color: '#333',
-  },
-  answerInput: {
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    padding: 15,
-    minHeight: 100,
-    fontSize: 16,
-    backgroundColor: '#f9f9f9',
-    textAlignVertical: 'top',
-  },
-  submittingContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 15,
-  },
-  submittingText: {
-    marginLeft: 10,
-    fontSize: 14,
-    color: '#666',
-  },
-  feedbackContainer: {
-    marginTop: 20,
-    padding: 15,
-    borderRadius: 8,
-  },
-  correctFeedback: {
-    backgroundColor: '#e8f5e9',
-    borderColor: '#4CAF50',
-    borderWidth: 1,
-  },
-  incorrectFeedback: {
-    backgroundColor: '#fbe9e7',
-    borderColor: '#ff5722',
-    borderWidth: 1,
-  },
-  feedbackTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    marginBottom: 8,
-  },
-  feedbackText: {
-    fontSize: 15,
-    lineHeight: 22,
-  },
-  buttonContainer: {
-    marginTop: 20,
+  difficultyBadge: {
+    alignSelf: 'flex-start',
     marginBottom: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
   },
-  submitButton: {
+  easyBadge: {
     backgroundColor: '#4CAF50',
-    padding: 15,
-    borderRadius: 8,
-    alignItems: 'center',
   },
-  nextButton: {
+  normalBadge: {
     backgroundColor: '#2196F3',
-    padding: 15,
-    borderRadius: 8,
-    alignItems: 'center',
   },
-  buttonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '500',
+  hardBadge: {
+    backgroundColor: '#F44336',
   },
-  optionsButton: {
-    backgroundColor: '#9C27B0',
-    padding: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginTop: 10,
-  },
-  optionsButtonText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  progressButton: {
-    backgroundColor: '#2196F3',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 5,
-    marginTop: 10,
-    marginBottom: 20,
-    width: '100%',
-    alignItems: 'center',
-  },
-  progressButtonText: {
+  difficultyText: {
     color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '500',
+    fontSize: 12,
+    fontWeight: 'bold',
   },
-  backButton: {
-    backgroundColor: '#FFA000',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 5,
-    width: '100%',
-    alignItems: 'center',
-  },
-  backButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '500',
-  },
-  errorContainer: {
-    backgroundColor: 'rgba(244, 67, 54, 0.1)',
-    borderRadius: 5,
-    padding: 10,
-    marginBottom: 15,
-    width: '100%',
-  },
-  errorText: {
-    color: '#D32F2F',
-    fontSize: 14,
-    textAlign: 'center',
-  }
+  question: {
+      fontSize: 18,
+      fontWeight: '500',
+      marginBottom: 20,
+      color: '#333',
+    },
+    answerInput: {
+      borderWidth: 1,
+      borderColor: '#ddd',
+      borderRadius: 8,
+      padding: 15,
+      minHeight: 100,
+      fontSize: 16,
+      backgroundColor: '#f9f9f9',
+      textAlignVertical: 'top',
+    },
+    submittingContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginTop: 15,
+    },
+    submittingText: {
+      marginLeft: 10,
+      fontSize: 14,
+      color: '#666',
+    },
+    feedbackContainer: {
+      marginTop: 20,
+      padding: 15,
+      borderRadius: 8,
+    },
+    correctFeedback: {
+      backgroundColor: '#e8f5e9',
+      borderColor: '#4CAF50',
+      borderWidth: 1,
+    },
+    incorrectFeedback: {
+      backgroundColor: '#fbe9e7',
+      borderColor: '#ff5722',
+      borderWidth: 1,
+    },
+    feedbackTitle: {
+      fontSize: 16,
+      fontWeight: 'bold',
+      marginBottom: 8,
+    },
+    feedbackText: {
+      fontSize: 15,
+      lineHeight: 22,
+    },
+    buttonContainer: {
+      marginTop: 20,
+      marginBottom: 10,
+    },
+    submitButton: {
+      backgroundColor: '#4CAF50',
+      padding: 15,
+      borderRadius: 8,
+      alignItems: 'center',
+    },
+    nextButton: {
+      backgroundColor: '#2196F3',
+      padding: 15,
+      borderRadius: 8,
+      alignItems: 'center',
+    },
+    buttonText: {
+      color: '#fff',
+      fontSize: 16,
+      fontWeight: '500',
+    },
+    optionsButton: {
+      backgroundColor: '#9C27B0',
+      padding: 12,
+      borderRadius: 8,
+      alignItems: 'center',
+      marginTop: 10,
+    },
+    optionsButtonText: {
+      color: '#fff',
+      fontSize: 14,
+      fontWeight: '500',
+    },
+    progressButton: {
+      backgroundColor: '#2196F3',
+      paddingHorizontal: 20,
+      paddingVertical: 10,
+      borderRadius: 5,
+      marginTop: 10,
+      marginBottom: 20,
+      width: '100%',
+      alignItems: 'center',
+    },
+    progressButtonText: {
+      color: '#FFFFFF',
+      fontSize: 16,
+      fontWeight: '500',
+    },
+    backButton: {
+      backgroundColor: '#FFA000',
+      paddingHorizontal: 20,
+      paddingVertical: 10,
+      borderRadius: 5,
+      width: '100%',
+      alignItems: 'center',
+    },
+    backButtonText: {
+      color: '#FFFFFF',
+      fontSize: 16,
+      fontWeight: '500',
+    },
+    errorContainer: {
+      backgroundColor: 'rgba(244, 67, 54, 0.1)',
+      borderRadius: 5,
+      padding: 10,
+      marginBottom: 15,
+      width: '100%',
+    },
+    errorText: {
+      color: '#D32F2F',
+      fontSize: 14,
+      textAlign: 'center',
+    }
 });

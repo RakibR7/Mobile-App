@@ -6,6 +6,7 @@ import {
 } from 'react-native';
 import { useUser } from '../context/UserContext';
 import { updatePerformanceData, getPerformanceData } from '../services/apiService';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const { width } = Dimensions.get('window');
 const CARD_WIDTH = width * 0.85;
@@ -178,28 +179,57 @@ export default function FlashcardsScreen({ route, navigation }) {
     }
   };
 
-  // Fixed generateFlashcards function for FlashcardsScreen.js
   const generateFlashcards = async () => {
     setLoading(true);
     setNetworkError(false);
 
     try {
-      // Generate flashcards using AI with a randomized element
+      // Get the user's preferred difficulty level
+      let difficulty = 'normal'; // Default
+      try {
+        const savedDifficulty = await AsyncStorage.getItem('questionDifficulty');
+        if (savedDifficulty) {
+          difficulty = savedDifficulty;
+        }
+      } catch (error) {
+        console.log('Could not load difficulty setting:', error);
+      }
+
+      // Get the appropriate model based on tutor
+      const tutorModel = {
+        biology: 'ft:gpt-3.5-turbo-0125:personal:csp-biology-finetuning-data10-20000:BJN7IqeS',
+        python: 'ft:gpt-3.5-turbo-0125:personal:dr1-csv6-shortened-3381:B0DlvD7p'
+      }[tutor] || 'gpt-3.5-turbo';
+
+      // Generate flashcards using AI with difficulty adjustment
       const uniqueId = Math.random().toString(36).substring(2, 8);
       const timestamp = new Date().toISOString();
 
-      const prompt = `Create 5 unique flashcards about ${topicName || tutor} for studying.
+      // Craft a difficulty-specific prompt
+      let difficultyGuide = '';
+      if (difficulty === 'easy') {
+        difficultyGuide = 'Make these beginner-friendly with clear explanations and basic concepts. Focus on foundational knowledge that new learners need to understand.';
+      } else if (difficulty === 'normal') {
+        difficultyGuide = 'Include moderately challenging content appropriate for students with some background knowledge. Balance depth and accessibility.';
+      } else if (difficulty === 'hard') {
+        difficultyGuide = 'Create challenging, exam-style questions that test deeper understanding and application of concepts. Include advanced topics and complex relationships.';
+      }
+
+      const prompt = `Create 5 unique ${difficulty} difficulty flashcards about ${topicName || tutor} for studying.
+      ${difficultyGuide}
       Each flashcard should have a thought-provoking question and comprehensive answer.
       Reference: ${uniqueId}-${timestamp}
       Format as JSON array with structure [{"id": 1, "question": "question text", "answer": "answer text"}].
       Only return the JSON array, no other text.`;
+
+      console.log(`Using model ${tutorModel} for flashcard generation`);
 
       const response = await fetch('http://51.21.106.225:5000/api/openai', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           message: prompt,
-          model: 'gpt-3.5-turbo',
+          model: tutorModel, // Use the subject-specific model
           tutor
         }),
         timeout: 15000
@@ -235,6 +265,7 @@ export default function FlashcardsScreen({ route, navigation }) {
           id: card.id || index + 1,
           question: card.question,
           answer: card.answer,
+          difficulty: difficulty, // Save the difficulty level
           attempts: 0,
           correct: 0,
           lastResult: null
@@ -243,15 +274,40 @@ export default function FlashcardsScreen({ route, navigation }) {
       } catch (parseError) {
         console.error('Error parsing flashcards:', parseError);
 
-        // Use default flashcards as fallback
+        // Use default flashcards as fallback, but adjust them based on difficulty
+        let fallbackCards;
         if (tutor === 'biology' && topic === 'cells') {
-          parsedFlashcards = getBiologyFlashcards(topic);
+          fallbackCards = getBiologyFlashcards(topic);
         } else {
-          parsedFlashcards = getDefaultFlashcards(topicName, tutor);
+          fallbackCards = getDefaultFlashcards(topicName, tutor);
         }
 
+        // Modify questions based on difficulty
+        fallbackCards = fallbackCards.map(card => {
+          let modifiedQuestion = card.question;
+          let modifiedAnswer = card.answer;
+
+          if (difficulty === 'easy') {
+            modifiedQuestion = `Basic concept: ${card.question}`;
+            modifiedAnswer = `${card.answer} This is an important foundational concept to understand.`;
+          } else if (difficulty === 'hard') {
+            modifiedQuestion = `Advanced analysis: ${card.question} Explain the mechanisms and implications in detail.`;
+            modifiedAnswer = `${card.answer} Consider how this concept connects to broader themes in ${topicName}.`;
+          }
+
+          return {
+            ...card,
+            question: modifiedQuestion,
+            answer: modifiedAnswer,
+            difficulty: difficulty,
+            attempts: 0,
+            correct: 0,
+            lastResult: null
+          };
+        });
+
         // Randomize the order
-        parsedFlashcards = parsedFlashcards.sort(() => Math.random() - 0.5);
+        parsedFlashcards = fallbackCards.sort(() => Math.random() - 0.5);
       }
 
       setShowRevisionOptions(false);
@@ -268,6 +324,17 @@ export default function FlashcardsScreen({ route, navigation }) {
       console.error('Error generating flashcards:', error);
       setNetworkError(true);
 
+      // Try to get the saved difficulty
+      let difficulty = 'normal';
+      try {
+        const savedDifficulty = await AsyncStorage.getItem('questionDifficulty');
+        if (savedDifficulty) {
+          difficulty = savedDifficulty;
+        }
+      } catch (err) {
+        console.log('Could not load difficulty setting on error:', err);
+      }
+
       // Use default flashcards with randomization as a fallback
       let fallbackCards;
       if (tutor === 'biology' && topic === 'cells') {
@@ -276,14 +343,29 @@ export default function FlashcardsScreen({ route, navigation }) {
         fallbackCards = getDefaultFlashcards(topicName, tutor);
       }
 
-      // Randomize default cards and slightly alter them
-      fallbackCards = fallbackCards.map(card => ({
-        ...card,
-        question: card.question + (Math.random() > 0.5 ? " Explain in detail." : " Be specific in your answer."),
-        attempts: 0,
-        correct: 0,
-        lastResult: null
-      })).sort(() => Math.random() - 0.5);
+      // Modify based on difficulty
+      fallbackCards = fallbackCards.map(card => {
+        let modifiedQuestion = card.question;
+        let modifiedAnswer = card.answer;
+
+        if (difficulty === 'easy') {
+          modifiedQuestion = `Basic concept: ${card.question}`;
+          modifiedAnswer = `${card.answer} This is a fundamental concept in ${topicName}.`;
+        } else if (difficulty === 'hard') {
+          modifiedQuestion = `Advanced topic: ${card.question} Provide detailed analysis.`;
+          modifiedAnswer = `${card.answer} Consider the wider implications and applications.`;
+        }
+
+        return {
+          ...card,
+          question: modifiedQuestion,
+          answer: modifiedAnswer,
+          difficulty: difficulty,
+          attempts: 0,
+          correct: 0,
+          lastResult: null
+        };
+      }).sort(() => Math.random() - 0.5);
 
       setFlashcards(fallbackCards);
       setShowRevisionOptions(false);
@@ -297,6 +379,71 @@ export default function FlashcardsScreen({ route, navigation }) {
       setSessionStartTime(Date.now());
     } finally {
       setLoading(false);
+    }
+  };
+
+  const saveSession = async () => {
+    if (sessionStats.cardsStudied === 0 || !userId) return;
+
+    try {
+      const timeSpent = Math.floor((Date.now() - sessionStartTime) / 1000);
+
+      // Prepare cards data with subtopic
+      const cardsData = flashcards.map(card => {
+        // Only include cards that were studied this session
+        if (card.lastResult !== null) {
+          return {
+            cardId: card.id.toString(),
+            question: card.question,
+            answer: card.answer,
+            subtopic: topic || 'general', // Use topic as subtopic
+            difficulty: card.difficulty || 'normal', // Include difficulty
+            attempts: card.attempts || 0,
+            correctAttempts: card.correct || 0
+          };
+        }
+        return null;
+      }).filter(Boolean); // Remove null entries
+
+      // Prepare session data - ensure these are always numbers
+      const sessionData = {
+        cardsStudied: sessionStats.cardsStudied,
+        correctAnswers: sessionStats.correctAnswers,
+        timeSpent,
+        subtopic: topic || 'general' // Use topic as subtopic
+      };
+
+      console.log("Saving flashcard performance:", {
+        userId,
+        tutor,
+        topic: topicName || tutor,
+        subtopic: topic || 'general',
+        activityType: 'flashcard',
+        sessionData,
+        cardsData: cardsData.length
+      });
+
+      // Send data to server
+      const response = await updatePerformanceData({
+        userId,
+        tutor,
+        topic: topicName || tutor,
+        subtopic: topic || 'general',
+        activityType: 'flashcard',
+        sessionData,
+        sessions: [sessionData], // Add sessions array with the same data
+        cards: cardsData // Change from cardsData to cards for consistency
+      });
+
+      if (response) {
+        console.log("Flashcard session saved successfully, response:", response);
+      } else {
+        console.log("Flashcard session queued for saving");
+      }
+
+    } catch (error) {
+      console.error('Error saving session data:', error);
+      // Don't show errors to user for this process
     }
   };
 
@@ -330,71 +477,6 @@ export default function FlashcardsScreen({ route, navigation }) {
     });
     setSessionStartTime(Date.now());
   };
-
-  // Updated saveSession function for FlashcardsScreen.js
-  const saveSession = async () => {
-  if (sessionStats.cardsStudied === 0 || !userId) return;
-
-  try {
-    const timeSpent = Math.floor((Date.now() - sessionStartTime) / 1000);
-
-    // Prepare cards data with subtopic
-    const cardsData = flashcards.map(card => {
-      // Only include cards that were studied this session
-      if (card.lastResult !== null) {
-        return {
-          cardId: card.id.toString(),
-          question: card.question,
-          answer: card.answer,
-          subtopic: topic || 'general', // Use topic as subtopic
-          attempts: card.attempts || 0,
-          correctAttempts: card.correct || 0
-        };
-      }
-      return null;
-    }).filter(Boolean); // Remove null entries
-
-    // Prepare session data - ensure these are always numbers
-    const sessionData = {
-      cardsStudied: sessionStats.cardsStudied,
-      correctAnswers: sessionStats.correctAnswers,
-      timeSpent,
-      subtopic: topic || 'general' // Use topic as subtopic
-    };
-
-    console.log("Saving flashcard performance:", {
-      userId,
-      tutor,
-      topic: topicName || tutor,
-      subtopic: topic || 'general',
-      activityType: 'flashcard',
-      sessionData,
-      cardsData: cardsData.length
-    });
-
-    // Send data to server
-    const response = await updatePerformanceData({
-      userId,
-      tutor,
-      topic: topicName || tutor,
-      subtopic: topic || 'general',
-      activityType: 'flashcard',
-      sessionData,
-      sessions: [sessionData], // Add sessions array with the same data
-      cards: cardsData // Change from cardsData to cards for consistency
-    });
-
-    if (response) {
-      console.log("Flashcard session saved successfully, response:", response);
-    } else {
-      console.log("Flashcard session queued for saving");
-    }
-
-  } catch (error) {
-    console.error('Error saving session data:', error);
-    // Don't show errors to user for this process
-  }
-};
 
   const flipCard = () => {
     if (showAnswer) {
@@ -654,6 +736,20 @@ export default function FlashcardsScreen({ route, navigation }) {
           frontAnimatedStyle,
           { opacity: showAnswer ? 0 : 1, zIndex: showAnswer ? 0 : 1 }
         ]}>
+          {flashcards[currentIndex]?.difficulty && (
+            <View style={[
+              styles.difficultyBadge,
+              flashcards[currentIndex]?.difficulty === 'easy' ? styles.easyBadge :
+              flashcards[currentIndex]?.difficulty === 'hard' ? styles.hardBadge :
+              styles.normalBadge
+            ]}>
+              <Text style={styles.difficultyText}>
+                {flashcards[currentIndex]?.difficulty === 'easy' ? 'Easy' :
+                flashcards[currentIndex]?.difficulty === 'hard' ? 'Hard' :
+                'Normal'}
+              </Text>
+            </View>
+          )}
           <Text style={styles.cardText}>{flashcards[currentIndex]?.question}</Text>
           <Text style={styles.tapHint}>Tap to reveal answer</Text>
         </Animated.View>
@@ -818,157 +914,179 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
   },
   card: {
-    position: 'absolute',
-    width: CARD_WIDTH,
-    height: 200,
-    backfaceVisibility: 'hidden',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#4CAF50',
-    borderRadius: 10,
-    padding: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 5,
-  },
-  cardBack: {
-    backgroundColor: '#2196F3',
-  },
-  cardText: {
-    fontSize: 18,
-    color: '#FFFFFF',
-    textAlign: 'center',
-  },
-  tapHint: {
-    position: 'absolute',
-    bottom: 10,
-    fontSize: 12,
-    color: 'rgba(255,255,255,0.7)',
-  },
-  flipButton: {
-    backgroundColor: '#FF9800',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 5,
-    marginBottom: 15,
-    alignSelf: 'center',
-  },
-  flipButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '500',
-  },
-  ratingContainer: {
-    width: '90%',
-    alignItems: 'center',
-    marginBottom: 15,
-    alignSelf: 'center',
-  },
-  ratingLabel: {
-    fontSize: 16,
-    marginBottom: 10,
-    color: '#333',
-  },
-  ratingButtons: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    width: '100%',
-  },
-  ratingButton: {
-    paddingVertical: 10,
-    borderRadius: 5,
-    alignItems: 'center',
-    width: '48%',
-  },
-  incorrectButton: {
-    backgroundColor: '#F44336',
-  },
-  correctButton: {
-    backgroundColor: '#4CAF50',
-  },
-  ratingButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '500',
-  },
-  navigationButtons: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    width: '90%',
-    marginBottom: 15,
-    alignSelf: 'center',
-  },
-  navButton: {
-    backgroundColor: '#9C27B0',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 5,
-    width: '48%',
-    alignItems: 'center',
-  },
-  navButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-  },
-  bottomButtons: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    width: '90%',
-    marginBottom: 20,
-    alignSelf: 'center',
-  },
-  actionButton: {
-    backgroundColor: '#607D8B',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 5,
-    width: '48%',
-    alignItems: 'center',
-  },
-  actionButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-  },
-  progressButton: {
-    backgroundColor: '#2196F3',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 5,
-    marginTop: 10,
-    marginBottom: 20,
-    width: '100%',
-    alignItems: 'center',
-  },
-  progressButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '500',
-  },
-  backButton: {
-    backgroundColor: '#FFA000',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 5,
-    width: '100%',
-    alignItems: 'center',
-  },
-  backButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '500',
-  },
-  errorContainer: {
-    backgroundColor: 'rgba(244, 67, 54, 0.1)',
-    borderRadius: 5,
-    padding: 10,
-    marginBottom: 15,
-    width: '100%',
-  },
-  errorText: {
-    color: '#D32F2F',
-    fontSize: 14,
-    textAlign: 'center',
-  }
+      position: 'absolute',
+      width: CARD_WIDTH,
+      height: 200,
+      backfaceVisibility: 'hidden',
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: '#4CAF50',
+      borderRadius: 10,
+      padding: 20,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.3,
+      shadowRadius: 4,
+      elevation: 5,
+    },
+    cardBack: {
+      backgroundColor: '#2196F3',
+    },
+    cardText: {
+      fontSize: 18,
+      color: '#FFFFFF',
+      textAlign: 'center',
+    },
+    tapHint: {
+      position: 'absolute',
+      bottom: 10,
+      fontSize: 12,
+      color: 'rgba(255,255,255,0.7)',
+    },
+    flipButton: {
+      backgroundColor: '#FF9800',
+      paddingHorizontal: 20,
+      paddingVertical: 10,
+      borderRadius: 5,
+      marginBottom: 15,
+      alignSelf: 'center',
+    },
+    flipButtonText: {
+      color: '#FFFFFF',
+      fontSize: 16,
+      fontWeight: '500',
+    },
+    ratingContainer: {
+      width: '90%',
+      alignItems: 'center',
+      marginBottom: 15,
+      alignSelf: 'center',
+    },
+    ratingLabel: {
+      fontSize: 16,
+      marginBottom: 10,
+      color: '#333',
+    },
+    ratingButtons: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      width: '100%',
+    },
+    ratingButton: {
+      paddingVertical: 10,
+      borderRadius: 5,
+      alignItems: 'center',
+      width: '48%',
+    },
+    incorrectButton: {
+      backgroundColor: '#F44336',
+    },
+    correctButton: {
+      backgroundColor: '#4CAF50',
+    },
+    ratingButtonText: {
+      color: '#FFFFFF',
+      fontSize: 16,
+      fontWeight: '500',
+    },
+    navigationButtons: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      width: '90%',
+      marginBottom: 15,
+      alignSelf: 'center',
+    },
+    navButton: {
+      backgroundColor: '#9C27B0',
+      paddingHorizontal: 20,
+      paddingVertical: 10,
+      borderRadius: 5,
+      width: '48%',
+      alignItems: 'center',
+    },
+    navButtonText: {
+      color: '#FFFFFF',
+      fontSize: 16,
+    },
+    bottomButtons: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      width: '90%',
+      marginBottom: 20,
+      alignSelf: 'center',
+    },
+    actionButton: {
+      backgroundColor: '#607D8B',
+      paddingHorizontal: 20,
+      paddingVertical: 10,
+      borderRadius: 5,
+      width: '48%',
+      alignItems: 'center',
+    },
+    actionButtonText: {
+      color: '#FFFFFF',
+      fontSize: 16,
+    },
+    progressButton: {
+      backgroundColor: '#2196F3',
+      paddingHorizontal: 20,
+      paddingVertical: 10,
+      borderRadius: 5,
+      marginTop: 10,
+      marginBottom: 20,
+      width: '100%',
+      alignItems: 'center',
+    },
+    progressButtonText: {
+      color: '#FFFFFF',
+      fontSize: 16,
+      fontWeight: '500',
+    },
+    backButton: {
+      backgroundColor: '#FFA000',
+      paddingHorizontal: 20,
+      paddingVertical: 10,
+      borderRadius: 5,
+      width: '100%',
+      alignItems: 'center',
+    },
+    backButtonText: {
+      color: '#FFFFFF',
+      fontSize: 16,
+      fontWeight: '500',
+    },
+    errorContainer: {
+      backgroundColor: 'rgba(244, 67, 54, 0.1)',
+      borderRadius: 5,
+      padding: 10,
+      marginBottom: 15,
+      width: '100%',
+    },
+    errorText: {
+      color: '#D32F2F',
+      fontSize: 14,
+      textAlign: 'center',
+    },
+    difficultyBadge: {
+      position: 'absolute',
+      top: 10,
+      right: 10,
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+      borderRadius: 12,
+    },
+    easyBadge: {
+      backgroundColor: '#4CAF50',
+    },
+    normalBadge: {
+      backgroundColor: '#2196F3',
+    },
+    hardBadge: {
+      backgroundColor: '#F44336',
+    },
+    difficultyText: {
+      color: '#FFFFFF',
+      fontSize: 12,
+      fontWeight: 'bold',
+    },
 });

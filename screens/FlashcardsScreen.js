@@ -178,13 +178,21 @@ export default function FlashcardsScreen({ route, navigation }) {
     }
   };
 
+  // Fixed generateFlashcards function for FlashcardsScreen.js
   const generateFlashcards = async () => {
     setLoading(true);
     setNetworkError(false);
 
     try {
-      // Generate flashcards using your AI API
-      const prompt = `Create 5 flashcards about ${topicName || tutor} for studying. Each flashcard should have a question on one side and the answer on the other. Format as JSON array with the structure [{"id": 1, "question": "question text", "answer": "answer text"}]. Only return the JSON array, no other text.`;
+      // Generate flashcards using AI with a randomized element
+      const uniqueId = Math.random().toString(36).substring(2, 8);
+      const timestamp = new Date().toISOString();
+
+      const prompt = `Create 5 unique flashcards about ${topicName || tutor} for studying.
+      Each flashcard should have a thought-provoking question and comprehensive answer.
+      Reference: ${uniqueId}-${timestamp}
+      Format as JSON array with structure [{"id": 1, "question": "question text", "answer": "answer text"}].
+      Only return the JSON array, no other text.`;
 
       const response = await fetch('http://51.21.106.225:5000/api/openai', {
         method: 'POST',
@@ -194,7 +202,7 @@ export default function FlashcardsScreen({ route, navigation }) {
           model: 'gpt-3.5-turbo',
           tutor
         }),
-        timeout: 10000 // Add timeout to prevent long-hanging requests
+        timeout: 15000
       });
 
       if (!response.ok) {
@@ -206,21 +214,17 @@ export default function FlashcardsScreen({ route, navigation }) {
       // Parse the AI response to extract the flashcards
       let parsedFlashcards;
       try {
-        // Try different parsing strategies to handle various API response formats
+        // Try different parsing strategies
         if (typeof data.response === 'string') {
-          // Look for a JSON array in the response
           const jsonMatch = data.response.match(/\[\s*\{.*\}\s*\]/s);
           if (jsonMatch) {
             parsedFlashcards = JSON.parse(jsonMatch[0]);
           } else if (data.response.startsWith('[') && data.response.endsWith(']')) {
-            // Try direct parsing if it looks like JSON
             parsedFlashcards = JSON.parse(data.response);
           } else {
-            // If we can't find JSON, fall back to default cards
             throw new Error("Couldn't extract JSON from response");
           }
         } else if (Array.isArray(data.response)) {
-          // Response is already an array
           parsedFlashcards = data.response;
         } else {
           throw new Error("Unexpected response format");
@@ -238,12 +242,16 @@ export default function FlashcardsScreen({ route, navigation }) {
 
       } catch (parseError) {
         console.error('Error parsing flashcards:', parseError);
-        // Use topic-specific flashcards when available
-        if (tutor === 'biology' && topic) {
+
+        // Use default flashcards as fallback
+        if (tutor === 'biology' && topic === 'cells') {
           parsedFlashcards = getBiologyFlashcards(topic);
         } else {
           parsedFlashcards = getDefaultFlashcards(topicName, tutor);
         }
+
+        // Randomize the order
+        parsedFlashcards = parsedFlashcards.sort(() => Math.random() - 0.5);
       }
 
       setShowRevisionOptions(false);
@@ -260,13 +268,24 @@ export default function FlashcardsScreen({ route, navigation }) {
       console.error('Error generating flashcards:', error);
       setNetworkError(true);
 
-      // Even with network errors, provide default flashcards
-      if (tutor === 'biology' && topic) {
-        setFlashcards(getBiologyFlashcards(topic));
+      // Use default flashcards with randomization as a fallback
+      let fallbackCards;
+      if (tutor === 'biology' && topic === 'cells') {
+        fallbackCards = getBiologyFlashcards(topic);
       } else {
-        setFlashcards(getDefaultFlashcards(topicName, tutor));
+        fallbackCards = getDefaultFlashcards(topicName, tutor);
       }
 
+      // Randomize default cards and slightly alter them
+      fallbackCards = fallbackCards.map(card => ({
+        ...card,
+        question: card.question + (Math.random() > 0.5 ? " Explain in detail." : " Be specific in your answer."),
+        attempts: 0,
+        correct: 0,
+        lastResult: null
+      })).sort(() => Math.random() - 0.5);
+
+      setFlashcards(fallbackCards);
       setShowRevisionOptions(false);
       setCurrentIndex(0);
       setSessionStats({

@@ -1,5 +1,5 @@
 // screens/ChatScreen.js
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -7,16 +7,8 @@ import {
   TextInput,
   TouchableOpacity,
   FlatList,
-  KeyboardAvoidingView,
-  Platform,
   SafeAreaView,
-  ActivityIndicator,
-  RefreshControl,
-  Alert
 } from 'react-native';
-// At the top of ChatScreen.js
-import { saveMessage } from '../services/apiService';
-import { syncMessages, startPolling } from '../services/syncService';
 
 export default function ChatScreen({ route, navigation }) {
   const { conversationId, tutor, selectedModel } = route.params;
@@ -24,197 +16,270 @@ export default function ChatScreen({ route, navigation }) {
   const [messages, setMessages] = useState([]);
   const [userInput, setUserInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
-  const [newMessageAlert, setNewMessageAlert] = useState(false);
+  const [conversations, setConversations] = useState([]);
+  const [activeConversationId, setActiveConversationId] = useState(conversationId);
+  const [showSidebar, setShowSidebar] = useState(false); // Controls sidebar visibility
 
-  const flatListRef = useRef(null);
-
-  // Function to fetch messages
-  const fetchMessages = useCallback(async () => {
+  // Fetch conversations
+  const fetchConversations = useCallback(async () => {
     try {
-      const fetchedMessages = await syncMessages(conversationId, tutor);
+      const response = await fetch(`http://51.21.106.225:5000/api/conversations?tutor=${tutor}`);
+      const data = await response.json();
+      setConversations(data);
 
-      // Check if there are new messages
-      if (messages.length > 0 && fetchedMessages.length > messages.length) {
-        setNewMessageAlert(true);
+      if (data.length > 0 && !activeConversationId) {
+        setActiveConversationId(data[0]._id);
       }
-
-      setMessages(fetchedMessages);
     } catch (error) {
-      console.error('Error fetching messages:', error);
-      Alert.alert('Error', 'Failed to load messages');
+      console.error("Error loading conversations:", error);
     }
-  }, [conversationId, tutor, messages.length]);
+  }, [tutor, activeConversationId]);
+
+  // Fetch messages for active conversation
+  const fetchMessages = useCallback(async () => {
+    if (!activeConversationId) return;
+
+    try {
+      const foundConvo = conversations.find(c => c._id === activeConversationId);
+      if (foundConvo) {
+        setMessages(foundConvo.messages || []);
+      }
+    } catch (error) {
+      console.error("Error fetching messages:", error);
+    }
+  }, [activeConversationId, conversations]);
 
   // Initial load
   useEffect(() => {
+    fetchConversations();
+  }, [fetchConversations]);
+
+  // Load messages when conversation changes
+  useEffect(() => {
     fetchMessages();
+  }, [fetchMessages, activeConversationId]);
 
-    // Start polling for updates
-    const stopPolling = startPolling(conversationId, tutor, (updatedMessages) => {
-      // Only update if there are new messages
-      if (updatedMessages.length > messages.length) {
-        setMessages(updatedMessages);
-        setNewMessageAlert(true);
-      }
-    }, 5000); // Poll every 5 seconds
+  // Send message function
+  const handleSend = async () => {
+    if (!userInput.trim() || !activeConversationId) return;
 
-    // Set navigation options
-    navigation.setOptions({
-      title: `${tutor.charAt(0).toUpperCase() + tutor.slice(1)} Tutor`,
-      headerRight: () => (
-        <TouchableOpacity
-          style={styles.newChatButton}
-          onPress={handleNewConversation}
-        >
-          <Text style={styles.newChatButtonText}>New</Text>
-        </TouchableOpacity>
-      ),
-    });
+    const userMessage = {
+      sender: "user",
+      text: userInput,
+      model: selectedModel,
+      tutor: tutor,
+      conversationId: activeConversationId
+    };
 
-    // Clean up polling when component unmounts
-    return () => stopPolling();
-  }, [conversationId, tutor, navigation, fetchMessages, messages.length]);
-
-  // Pull to refresh handler
-  const onRefresh = useCallback(async () => {
-    setRefreshing(true);
-    try {
-      await fetchMessages();
-      setNewMessageAlert(false);
-    } catch (error) {
-      console.error('Error refreshing messages:', error);
-    } finally {
-      setRefreshing(false);
-    }
-  }, [fetchMessages]);
-
-  const handleNewConversation = async () => {
-    navigation.navigate('SubjectTutor');
-  };
-
-  const sendMessage = async () => {
-    if (!userInput.trim() || !conversationId) return;
-
-    const userMessage = userInput.trim();
-    setUserInput('');
     setIsLoading(true);
 
+    // Update UI immediately
+    setMessages(prev => [...prev, userMessage]);
+
     try {
-      // Add user message to the UI immediately
-      const updatedMessages = [...messages, { sender: 'user', text: userMessage }];
-      setMessages(updatedMessages);
+      // Send user message to backend
+      await fetch("http://51.21.106.225:5000/api/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(userMessage)
+      });
 
-      // Save user message to API
-      await saveMessage(conversationId, 'user', userMessage, selectedModel, tutor);
-
-      // Get AI response
-      const aiResponseData = await fetch('http://51.21.106.225:5000/api/openai', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      // Get AI reply
+      const aiResponseData = await fetch("http://51.21.106.225:5000/api/openai", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          message: userMessage,
+          message: userInput,
           model: selectedModel,
           tutor
         })
       });
 
-      if (!aiResponseData.ok) {
-        throw new Error('Failed to get AI response');
-      }
-
       const aiData = await aiResponseData.json();
-      const aiReply = aiData.response;
+      const aiMessage = {
+        sender: "ai",
+        text: aiData.response,
+        model: selectedModel,
+        tutor: tutor,
+        conversationId: activeConversationId
+      };
 
-      // Save AI response to API
-      await saveMessage(conversationId, 'ai', aiReply, selectedModel, tutor);
+      // Save AI response to backend
+      await fetch("http://51.21.106.225:5000/api/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(aiMessage)
+      });
 
-      // Update messages in the UI
-      setMessages([...updatedMessages, { sender: 'ai', text: aiReply }]);
+      // Update UI with AI response
+      setMessages(prev => [...prev, aiMessage]);
+
+      // Refresh conversation list to update titles
+      fetchConversations();
     } catch (error) {
-      console.error('Error sending message:', error);
-      Alert.alert('Error', 'Failed to send message. Please try again.');
+      console.error("Error sending message:", error);
     } finally {
       setIsLoading(false);
+      setUserInput("");
     }
   };
 
+  // New conversation handler
+  const handleNewConversation = async () => {
+    try {
+      const response = await fetch("http://51.21.106.225:5000/api/conversations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: "New Conversation",
+          model: selectedModel,
+          tutor
+        })
+      });
+
+      const newConversation = await response.json();
+      setConversations([newConversation, ...conversations]);
+      setActiveConversationId(newConversation._id);
+      setMessages([]);
+    } catch (error) {
+      console.error("Error creating conversation:", error);
+    }
+  };
+
+  // Delete conversation handler
+  const handleDeleteConversation = async (id) => {
+    try {
+      await fetch(`http://51.21.106.225:5000/api/conversations/${id}?tutor=${tutor}`, {
+        method: "DELETE"
+      });
+
+      const updatedConversations = conversations.filter(conv => conv._id !== id);
+      setConversations(updatedConversations);
+
+      if (activeConversationId === id) {
+        if (updatedConversations.length > 0) {
+          setActiveConversationId(updatedConversations[0]._id);
+        } else {
+          setActiveConversationId(null);
+          setMessages([]);
+        }
+      }
+    } catch (error) {
+      console.error("Error deleting conversation:", error);
+    }
+  };
+
+  // Switch conversation handler
+  const switchConversation = (id) => {
+    setActiveConversationId(id);
+    setShowSidebar(false); // Auto-hide sidebar after selecting conversation
+  };
+
+  // Toggle sidebar visibility
+  const toggleSidebar = () => {
+    setShowSidebar(!showSidebar);
+  };
+
+  // Render a message
   const renderMessage = ({ item }) => (
-    <View
-      style={[
-        styles.messageContainer,
-        item.sender === 'user' ? styles.userMessage : styles.aiMessage
-      ]}
-    >
+    <View style={[styles.messageContainer,
+          item.sender === "user" ? styles.userMessage : styles.aiMessage]}>
       <Text style={styles.messageText}>{item.text}</Text>
     </View>
   );
 
+  // Render a conversation item
+  const renderConversationItem = ({ item }) => (
+    <View style={[
+      styles.conversationItem,
+      item._id === activeConversationId ? styles.activeConversation : null
+    ]}>
+      <TouchableOpacity
+        style={styles.convoTitleContainer}
+        onPress={() => switchConversation(item._id)}>
+        <Text style={styles.convoTitle}>
+          {item.title || "Untitled Conversation"}
+        </Text>
+      </TouchableOpacity>
+      <TouchableOpacity
+        style={styles.deleteButton}
+        onPress={() => handleDeleteConversation(item._id)}>
+        <Text style={styles.deleteButtonText}>X</Text>
+      </TouchableOpacity>
+    </View>
+  );
+
+  // Get active conversation title
+  const getActiveTitle = () => {
+    const activeConvo = conversations.find(c => c._id === activeConversationId);
+    return activeConvo ? (activeConvo.title || "Untitled Conversation") : "No Conversation";
+  };
+
   return (
     <SafeAreaView style={styles.container}>
-      {newMessageAlert && (
-        <TouchableOpacity
-          style={styles.newMessageAlert}
-          onPress={() => {
-            setNewMessageAlert(false);
-            flatListRef.current?.scrollToEnd();
-          }}
-        >
-          <Text style={styles.newMessageAlertText}>New messages available</Text>
-        </TouchableOpacity>
-      )}
+      <View style={styles.content}>
+        {/* Sidebar - only shown when showSidebar is true */}
+        {showSidebar && (
+          <View style={styles.sidebar}>
+            <View style={styles.sidebarHeader}>
+              <TouchableOpacity
+                style={styles.newConvoButton}
+                onPress={handleNewConversation}>
+                <Text style={styles.buttonText}>+ New</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.closeSidebarButton}
+                onPress={toggleSidebar}>
+                <Text style={styles.buttonText}>Close</Text>
+              </TouchableOpacity>
+            </View>
 
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.keyboardAvoid}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
-      >
-        <FlatList
-          ref={flatListRef}
-          data={messages}
-          renderItem={renderMessage}
-          keyExtractor={(item, index) => index.toString()}
-          contentContainerStyle={styles.messagesContainer}
-          onContentSizeChange={() => {
-            if (messages.length > 0 && !newMessageAlert) {
-              flatListRef.current?.scrollToEnd();
-            }
-          }}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              colors={['#4CAF50']}
-              tintColor="#4CAF50"
+            <FlatList
+              data={conversations}
+              renderItem={renderConversationItem}
+              keyExtractor={item => item._id}
+              style={styles.convoList}
             />
-          }
-        />
+          </View>
+        )}
 
-        <View style={styles.inputContainer}>
-          <TextInput
-            style={styles.input}
-            value={userInput}
-            onChangeText={setUserInput}
-            placeholder="Ask your mentor..."
-            placeholderTextColor="#999"
-            multiline
+        <View style={styles.chatContainer}>
+          {/* Chat header with conversation title and history button */}
+          <View style={styles.chatHeader}>
+            <Text style={styles.chatTitle}>{getActiveTitle()}</Text>
+            <TouchableOpacity
+              style={styles.historyButton}
+              onPress={toggleSidebar}>
+              <Text style={styles.buttonText}>
+                {showSidebar ? "Hide History" : "Show History"}
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          <FlatList
+            data={messages}
+            renderItem={renderMessage}
+            keyExtractor={(item, index) => index.toString()}
+            style={styles.messagesList}
           />
-          <TouchableOpacity
-            style={[
-              styles.sendButton,
-              (isLoading || !userInput.trim()) && styles.disabledButton
-            ]}
-            onPress={sendMessage}
-            disabled={isLoading || !userInput.trim()}
-          >
-            {isLoading ? (
-              <ActivityIndicator color="#FFFFFF" size="small" />
-            ) : (
-              <Text style={styles.sendButtonText}>Send</Text>
-            )}
-          </TouchableOpacity>
+
+          <View style={styles.inputContainer}>
+            <TextInput
+              style={styles.input}
+              value={userInput}
+              onChangeText={setUserInput}
+              placeholder="Type your message..."
+              multiline
+            />
+            <TouchableOpacity
+              style={styles.sendButton}
+              onPress={handleSend}
+              disabled={isLoading || !userInput.trim()}>
+              <Text style={styles.buttonText}>Send</Text>
+            </TouchableOpacity>
+          </View>
         </View>
-      </KeyboardAvoidingView>
+      </View>
     </SafeAreaView>
   );
 }
@@ -222,82 +287,136 @@ export default function ChatScreen({ route, navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F9F9F9',
+    backgroundColor: '#f5f5f5',
   },
-  keyboardAvoid: {
+  content: {
+    flex: 1,
+    flexDirection: 'row',
+  },
+  sidebar: {
+    width: 220,
+    borderRightWidth: 1,
+    borderRightColor: '#ddd',
+    backgroundColor: '#f8f8f8',
+  },
+  sidebarHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    padding: 10,
+  },
+  newConvoButton: {
+    backgroundColor: '#4caf50',
+    padding: 10,
+    borderRadius: 5,
+    flex: 1,
+    marginRight: 5,
+    alignItems: 'center',
+  },
+  closeSidebarButton: {
+    backgroundColor: '#757575',
+    padding: 10,
+    borderRadius: 5,
+    flex: 1,
+    marginLeft: 5,
+    alignItems: 'center',
+  },
+  convoList: {
     flex: 1,
   },
-  newChatButton: {
-    paddingHorizontal: 15,
+  conversationItem: {
+    flexDirection: 'row',
+    padding: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#ddd',
   },
-  newChatButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '500',
+  activeConversation: {
+    backgroundColor: '#e0f7fa',
   },
-  messagesContainer: {
+  convoTitleContainer: {
+    flex: 1,
+  },
+  convoTitle: {
+    fontSize: 14,
+  },
+  deleteButton: {
+    padding: 2,
+    borderRadius: 3,
+  },
+  deleteButtonText: {
+    color: 'red',
+    fontWeight: 'bold',
+  },
+  chatContainer: {
+    flex: 1,
+    display: 'flex',
+    flexDirection: 'column',
+  },
+  chatHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     padding: 10,
-    paddingBottom: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#ddd',
+    backgroundColor: '#fff',
+  },
+  chatTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  historyButton: {
+    backgroundColor: '#2196f3',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 5,
+  },
+  messagesList: {
+    flex: 1,
+    padding: 10,
   },
   messageContainer: {
-    maxWidth: '80%',
-    padding: 12,
-    borderRadius: 8,
+    padding: 10,
     marginVertical: 5,
+    maxWidth: '80%',
+    borderRadius: 10,
   },
   userMessage: {
     alignSelf: 'flex-end',
-    backgroundColor: '#E0F7FA',
+    backgroundColor: '#e0f7fa',
   },
   aiMessage: {
     alignSelf: 'flex-start',
-    backgroundColor: '#F1F8E9',
+    backgroundColor: '#f1f8e9',
   },
   messageText: {
     fontSize: 16,
-    color: '#333',
   },
   inputContainer: {
     flexDirection: 'row',
     padding: 10,
-    backgroundColor: '#FFF',
     borderTopWidth: 1,
-    borderTopColor: '#EEE',
+    borderTopColor: '#ddd',
+    backgroundColor: '#fff',
   },
   input: {
     flex: 1,
-    backgroundColor: '#F0F0F0',
-    borderRadius: 20,
-    paddingHorizontal: 15,
-    paddingVertical: 10,
-    maxHeight: 100,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 5,
+    padding: 8,
     fontSize: 16,
+    maxHeight: 100,
   },
   sendButton: {
+    backgroundColor: '#4caf50',
+    paddingHorizontal: 15,
+    paddingVertical: 10,
     marginLeft: 10,
-    backgroundColor: '#4CAF50',
-    borderRadius: 20,
-    width: 50,
-    height: 50,
-    alignItems: 'center',
+    borderRadius: 5,
     justifyContent: 'center',
   },
-  disabledButton: {
-    backgroundColor: '#A5D6A7',
-  },
-  sendButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '500',
-  },
-  newMessageAlert: {
-    backgroundColor: '#4CAF50',
-    padding: 10,
-    alignItems: 'center',
-  },
-  newMessageAlertText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '500',
+  buttonText: {
+    color: '#fff',
+    fontWeight: 'bold',
   },
 });

@@ -136,13 +136,20 @@ export default function DynamicExerciseScreen({ route, navigation }) {
     }
   };
 
+  // Fixed generateQuestions function for DynamicExerciseScreen.js
   const generateQuestions = async () => {
     setLoading(true);
     setNetworkError(false);
 
     try {
-      // Generate questions using your AI API
-      const prompt = `Create 3 practice questions about ${topicName} in ${tutor}. Format as JSON array with the structure [{"id": 1, "question": "question text"}]. Only return the JSON, no other text.`;
+      // Generate unique identifier for variety
+      const uniqueId = Math.random().toString(36).substring(2, 8);
+
+      const prompt = `Create 3 challenging practice questions about ${topicName} in ${tutor}.
+      Make these questions test understanding and be different from typical textbook questions.
+      ID: ${uniqueId}
+      Format as JSON array with structure [{"id": 1, "question": "question text"}].
+      Only return the JSON, no other text.`;
 
       const response = await fetch('http://51.21.106.225:5000/api/openai', {
         method: 'POST',
@@ -152,7 +159,7 @@ export default function DynamicExerciseScreen({ route, navigation }) {
           model: 'gpt-3.5-turbo',
           tutor
         }),
-        timeout: 10000 // Add timeout to prevent long-hanging requests
+        timeout: 15000
       });
 
       if (!response.ok) {
@@ -164,33 +171,39 @@ export default function DynamicExerciseScreen({ route, navigation }) {
       // Parse the AI response to extract the questions
       let parsedQuestions;
       try {
-        // Try different parsing strategies to handle various API response formats
+        // Try different parsing strategies
         if (typeof data.response === 'string') {
-          // Look for a JSON array in the response
           const jsonMatch = data.response.match(/\[\s*\{.*\}\s*\]/s);
           if (jsonMatch) {
             parsedQuestions = JSON.parse(jsonMatch[0]);
           } else if (data.response.startsWith('[') && data.response.endsWith(']')) {
-            // Try direct parsing if it looks like JSON
             parsedQuestions = JSON.parse(data.response);
           } else {
-            // If we can't find JSON, fall back to default questions
             throw new Error("Couldn't extract JSON from response");
           }
         } else if (Array.isArray(data.response)) {
-          // Response is already an array
           parsedQuestions = data.response;
         } else {
           throw new Error("Unexpected response format");
         }
       } catch (parseError) {
         console.error('Error parsing questions:', parseError);
-        // Use topic-specific questions when available
+
+        // Use default questions as fallback
         if (tutor === 'biology' && topic === 'cells') {
           parsedQuestions = getCellsQuestions();
         } else {
           parsedQuestions = getDefaultQuestions(topicName, tutor);
         }
+
+        // Add some variation to the questions
+        parsedQuestions = parsedQuestions.map(q => ({
+          ...q,
+          question: q.question + ` (Consider the applications in ${new Date().toLocaleDateString()}).`
+        }));
+
+        // Randomize order
+        parsedQuestions = parsedQuestions.sort(() => Math.random() - 0.5);
       }
 
       setShowQuizOptions(false);
@@ -208,13 +221,21 @@ export default function DynamicExerciseScreen({ route, navigation }) {
       console.error('Error generating questions:', error);
       setNetworkError(true);
 
-      // Even with network errors, provide default questions
+      // Use default questions as fallback
+      let fallbackQuestions;
       if (tutor === 'biology' && topic === 'cells') {
-        setQuestions(getCellsQuestions());
+        fallbackQuestions = getCellsQuestions();
       } else {
-        setQuestions(getDefaultQuestions(topicName, tutor));
+        fallbackQuestions = getDefaultQuestions(topicName, tutor);
       }
 
+      // Add variation to fallback questions
+      fallbackQuestions = fallbackQuestions.map(q => ({
+        ...q,
+        question: q.question + ` (Focus specifically on recent developments).`
+      })).sort(() => Math.random() - 0.5);
+
+      setQuestions(fallbackQuestions);
       setShowQuizOptions(false);
       setCurrentQuestionIndex(0);
       setAnswers({});

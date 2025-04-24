@@ -1,6 +1,6 @@
 // services/apiService.js
 // API base URL pointing to your EC2 server
-const API_BASE_URL = 'http://51.21.106.225:5000';
+const API_BASE_URL = process.env.REACT_APP_API_URL || "http://51.21.106.225:5000";
 
 // Helper function to handle fetch with timeout
 const fetchWithTimeout = async (url, options = {}, timeout = 8000) => {
@@ -20,18 +20,14 @@ const fetchWithTimeout = async (url, options = {}, timeout = 8000) => {
 };
 
 // Fetch AI response with better error handling
-export const fetchAIResponse = async (userMessage, selectedModel, tutor) => {
+export const fetchAIResponse = async (message, model, tutor) => {
   try {
     const response = await fetchWithTimeout(
       `${API_BASE_URL}/api/openai`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          message: userMessage,
-          model: selectedModel,
-          tutor: tutor
-        }),
+        body: JSON.stringify({ message, model, tutor })
       },
       15000 // 15 second timeout for AI responses
     );
@@ -45,9 +41,9 @@ export const fetchAIResponse = async (userMessage, selectedModel, tutor) => {
   } catch (error) {
     console.error("Error fetching AI response:", error);
     if (error.name === 'AbortError') {
-      throw new Error('Request timed out. Please try again.');
+      return "Request timed out. Please try again with a simpler query.";
     }
-    throw error;
+    return "Sorry, I couldn't get a response at the moment. Please try again later.";
   }
 };
 
@@ -175,7 +171,7 @@ export const deleteConversation = async (id, tutor) => {
   }
 };
 
-// Updated getPerformanceData function to fix flashcard history issues
+// Get user performance data with error fallback
 export const getPerformanceData = async (userId, tutor, topic, activityType) => {
   try {
     let url = `${API_BASE_URL}/api/performance?userId=${userId}`;
@@ -185,41 +181,15 @@ export const getPerformanceData = async (userId, tutor, topic, activityType) => 
 
     console.log('Fetching performance data from:', url);
 
-    const response = await fetchWithTimeout(url, {}, 8000); // Increased timeout
+    const response = await fetchWithTimeout(url, {}, 5000);
 
     if (!response.ok) {
       console.error(`Performance data request failed with status ${response.status}`);
-      // Try to get error details
-      try {
-        const errorData = await response.json();
-        console.error('Error details:', errorData);
-      } catch (e) {
-        // Ignore error parsing errors
-      }
       return [];
     }
 
     const result = await response.json();
     console.log(`Found ${result.length} ${activityType || ''} history records`);
-
-    // Add some additional logging to help debug
-    if (result.length > 0) {
-      console.log('Sample record structure:',
-        JSON.stringify({
-          _id: result[0]._id,
-          userId: result[0].userId,
-          tutor: result[0].tutor,
-          topic: result[0].topic,
-          subtopic: result[0].subtopic,
-          activityType: result[0].activityType,
-          hasSessionData: !!result[0].sessionData,
-          hasSessions: !!result[0].sessions,
-          sessionsCount: result[0].sessions?.length || 0,
-          createdAt: result[0].createdAt
-        })
-      );
-    }
-
     return result;
   } catch (error) {
     console.error("Error fetching performance data:", error);
@@ -249,7 +219,10 @@ export const getSubtopicProgress = async (userId, tutor) => {
   }
 };
 
-// Updated updatePerformanceData function in apiService.js
+// Update performance data with queue mechanism for offline support
+let performanceUpdateQueue = [];
+let isProcessingQueue = false;
+
 export const updatePerformanceData = async (performanceData) => {
   // Add current update to queue
   performanceUpdateQueue.push(performanceData);

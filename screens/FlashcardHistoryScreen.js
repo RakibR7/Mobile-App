@@ -22,14 +22,6 @@ export default function FlashcardHistoryScreen({ route, navigation }) {
     totalTime: 0
   });
 
-  // For debugging
-  const [debugInfo, setDebugInfo] = useState({
-    requestParams: {},
-    responseRaw: null,
-    processedData: null,
-    error: null
-  });
-
   useEffect(() => {
     fetchHistory();
   }, []);
@@ -44,107 +36,90 @@ export default function FlashcardHistoryScreen({ route, navigation }) {
     setLoading(true);
     setError(null);
 
-    // Store debug info
-    const requestParams = {
-      userId,
-      tutor,
-      topic,
-      activityType: 'flashcard'
-    };
-    setDebugInfo(prev => ({ ...prev, requestParams }));
-
     try {
       console.log(`Fetching flashcard history for user ${userId}, tutor ${tutor || 'any'}, topic ${topic || 'any'}`);
 
       // First try with specific topic
-      let rawData = await getPerformanceData(
+      let data = await getPerformanceData(
         userId,
         tutor,
         topic,
         'flashcard'
       );
 
-      // Store the raw response for debugging
-      setDebugInfo(prev => ({ ...prev, responseRaw: rawData }));
-
-      console.log(`Found ${rawData?.length || 0} flashcard history records with specific topic`);
+      console.log(`Found ${data?.length || 0} flashcard history records with specific topic`);
 
       // If no results with specific topic, try more broadly
-      if (!rawData || rawData.length === 0) {
+      if (!data || data.length === 0) {
         console.log('No records found with specific topic, trying broader search');
-        rawData = await getPerformanceData(
+        data = await getPerformanceData(
           userId,
           tutor,
           null, // Try without topic filter
           'flashcard'
         );
-        console.log(`Found ${rawData?.length || 0} flashcard history records with broader search`);
+        console.log(`Found ${data?.length || 0} flashcard history records with broader search`);
       }
 
-      if (!Array.isArray(rawData)) {
+      if (!Array.isArray(data)) {
         throw new Error("Invalid data format received from server");
       }
 
-      // Process and normalize the data
-      const processedData = rawData.map(session => {
-        // Extract or calculate session statistics
+      // Process the data to ensure we have the right structure
+      const processedSessions = data.map(session => {
+        // Extract session stats from various possible locations
         let sessionCards = 0;
         let sessionCorrect = 0;
         let sessionTime = 0;
 
-        // Look for session data in all possible locations
+        // Check all possible locations for session data
         if (session.sessionData) {
-          // Direct sessionData format
-          sessionCards = parseInt(session.sessionData.cardsStudied || 0);
-          sessionCorrect = parseInt(session.sessionData.correctAnswers || 0);
-          sessionTime = parseInt(session.sessionData.timeSpent || 0);
-        } else if (session.sessions && Array.isArray(session.sessions)) {
-          // Nested sessions format
-          session.sessions.forEach(s => {
-            sessionCards += parseInt(s.cardsStudied || 0);
-            sessionCorrect += parseInt(s.correctAnswers || 0);
-            sessionTime += parseInt(s.timeSpent || 0);
-          });
-        } else if (session.cards && Array.isArray(session.cards)) {
-          // Try to derive from cards array
-          sessionCards = session.cards.length;
-          sessionCorrect = session.cards.filter(card =>
-            card.correctAttempts && card.correctAttempts > 0
-          ).length;
+          sessionCards = parseInt(session.sessionData.cardsStudied || 0, 10);
+          sessionCorrect = parseInt(session.sessionData.correctAnswers || 0, 10);
+          sessionTime = parseInt(session.sessionData.timeSpent || 0, 10);
         }
 
-        // If we have cards data but no explicit session time, use a default
-        if (sessionCards > 0 && sessionTime === 0) {
-          sessionTime = sessionCards * 30; // Estimate 30 seconds per card
+        if (session.sessions && Array.isArray(session.sessions) && session.sessions.length > 0) {
+          session.sessions.forEach(s => {
+            sessionCards += parseInt(s.cardsStudied || 0, 10);
+            sessionCorrect += parseInt(s.correctAnswers || 0, 10);
+            sessionTime += parseInt(s.timeSpent || 0, 10);
+          });
         }
+
+        // As a last resort, try to count cards
+        if (sessionCards === 0 && session.cards && Array.isArray(session.cards)) {
+          sessionCards = session.cards.length;
+          session.cards.forEach(card => {
+            if (card.correctAttempts && card.correctAttempts > 0) {
+              sessionCorrect++;
+            }
+          });
+        }
+
+        // Calculate accuracy
+        const accuracy = sessionCards > 0 ? Math.round((sessionCorrect / sessionCards) * 100) : 0;
 
         return {
           ...session,
+          // Store processed stats in a consistent location
           processedStats: {
             sessionCards,
             sessionCorrect,
             sessionTime,
-            accuracy: sessionCards > 0 ? Math.round((sessionCorrect / sessionCards) * 100) : 0
+            accuracy
           }
         };
       });
 
-      // Store the processed data for debugging
-      setDebugInfo(prev => ({ ...prev, processedData }));
-
-      // Only show sessions with actual data
-      const validSessions = processedData.filter(
-        session => session.processedStats.sessionCards > 0
-      );
-
-      setSessions(validSessions);
+      setSessions(processedSessions);
 
       // Calculate overall stats
       let totalCards = 0;
       let totalCorrect = 0;
       let totalTime = 0;
 
-      validSessions.forEach(session => {
+      processedSessions.forEach(session => {
         totalCards += session.processedStats.sessionCards;
         totalCorrect += session.processedStats.sessionCorrect;
         totalTime += session.processedStats.sessionTime;
@@ -159,8 +134,16 @@ export default function FlashcardHistoryScreen({ route, navigation }) {
 
     } catch (error) {
       console.error('Error fetching flashcard history:', error);
-      setError("Couldn't load history data: " + error.message);
-      setDebugInfo(prev => ({ ...prev, error: error.toString() }));
+      setError("Couldn't load history data. " + error.message);
+
+      // Set empty data for safety
+      setSessions([]);
+      setStats({
+        totalCards: 0,
+        totalCorrect: 0,
+        accuracy: 0,
+        totalTime: 0
+      });
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -191,48 +174,26 @@ export default function FlashcardHistoryScreen({ route, navigation }) {
     }
   };
 
-  const showFullDebugInfo = () => {
-    console.log("Debug Info:", JSON.stringify(debugInfo, null, 2));
+  // Debug function to view session data structure
+  const viewSessionData = (session) => {
+    const debugInfo = {
+      id: session._id,
+      topic: session.topic,
+      subtopic: session.subtopic,
+      hasSessionData: !!session.sessionData,
+      sessionDataProps: session.sessionData ? Object.keys(session.sessionData) : [],
+      hasSessions: !!session.sessions,
+      sessionsCount: session.sessions?.length || 0,
+      hasCards: !!session.cards,
+      cardsCount: session.cards?.length || 0,
+      processed: session.processedStats
+    };
 
     Alert.alert(
-      'Debug Information',
-      'Full debug info has been logged to console.\n\n' +
-      `Request Params: ${JSON.stringify(debugInfo.requestParams)}\n\n` +
-      `Sessions Found: ${sessions.length}\n\n` +
-      `Total Cards: ${stats.totalCards}\n\n` +
-      `Raw Data Sample: ${JSON.stringify(debugInfo.responseRaw?.[0]?.sessionData || {})}\n\n` +
-      `Error: ${debugInfo.error || 'None'}`,
+      'Session Data',
+      JSON.stringify(debugInfo, null, 2),
       [{ text: 'OK' }]
     );
-  };
-
-  const showDataStructure = () => {
-    if (debugInfo.responseRaw && debugInfo.responseRaw.length > 0) {
-      const sample = debugInfo.responseRaw[0];
-      let structure = {
-        _id: !!sample._id,
-        userId: !!sample.userId,
-        tutor: sample.tutor,
-        topic: sample.topic,
-        subtopic: sample.subtopic,
-        activityType: sample.activityType,
-        hasSessionData: !!sample.sessionData,
-        sessionDataStructure: sample.sessionData ? Object.keys(sample.sessionData) : null,
-        hasSessions: !!sample.sessions,
-        sessionsCount: sample.sessions?.length || 0,
-        hasCards: !!sample.cards,
-        cardsCount: sample.cards?.length || 0,
-        createdAt: !!sample.createdAt
-      };
-
-      Alert.alert(
-        'Data Structure',
-        JSON.stringify(structure, null, 2),
-        [{ text: 'OK' }]
-      );
-    } else {
-      Alert.alert('No Data', 'No record found to analyze structure');
-    }
   };
 
   if (loading && !refreshing) {
@@ -256,18 +217,7 @@ export default function FlashcardHistoryScreen({ route, navigation }) {
         />
       }
     >
-      <View style={styles.headerRow}>
-        <Text style={styles.title}>Flashcard History</Text>
-        <View style={styles.debugButtons}>
-          <TouchableOpacity onPress={showDataStructure} style={styles.debugButton}>
-            <Text style={styles.debugButtonText}>Structure</Text>
-          </TouchableOpacity>
-          <TouchableOpacity onPress={showFullDebugInfo} style={styles.debugButton}>
-            <Text style={styles.debugButtonText}>Debug</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-
+      <Text style={styles.title}>Flashcard History</Text>
       <Text style={styles.subtitle}>
         {tutor ? `Tutor: ${tutor}` : 'All Tutors'}
         {topic ? ` Topic: ${topic}` : ' All Topics'}
@@ -317,10 +267,20 @@ export default function FlashcardHistoryScreen({ route, navigation }) {
           <Text style={styles.sectionTitle}>Recent Sessions</Text>
 
           {sessions.map((item, index) => {
-            const { sessionCards, sessionCorrect, sessionTime, accuracy } = item.processedStats;
+            // Use processedStats structure consistently
+            const { sessionCards, sessionCorrect, sessionTime, accuracy } = item.processedStats || {
+              sessionCards: 0,
+              sessionCorrect: 0,
+              sessionTime: 0,
+              accuracy: 0
+            };
 
             return (
-              <View key={item._id || index} style={styles.sessionCard}>
+              <TouchableOpacity
+                key={item._id || index}
+                style={styles.sessionCard}
+                onLongPress={() => viewSessionData(item)}
+              >
                 <Text style={styles.sessionDate}>
                   {formatDate(item.createdAt || new Date())}
                 </Text>
@@ -349,7 +309,7 @@ export default function FlashcardHistoryScreen({ route, navigation }) {
                     <Text style={styles.sessionStatLabel}>Time</Text>
                   </View>
                 </View>
-              </View>
+              </TouchableOpacity>
             );
           })}
         </>
@@ -392,24 +352,6 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 20,
     backgroundColor: '#f5f5f5',
-  },
-  headerRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  debugButtons: {
-    flexDirection: 'row',
-  },
-  debugButton: {
-    padding: 5,
-    backgroundColor: '#f0f0f0',
-    borderRadius: 4,
-    marginLeft: 5,
-  },
-  debugButtonText: {
-    fontSize: 12,
-    color: '#666',
   },
   loadingContainer: {
     flex: 1,

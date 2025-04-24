@@ -1,5 +1,5 @@
 // screens/ProfileScreen.js
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -12,6 +12,7 @@ import {
   Switch
 } from 'react-native';
 import { useAuth } from '../context/AuthContext';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const ProfileScreen = ({ navigation }) => {
   const { user, signOut } = useAuth();
@@ -21,6 +22,36 @@ const ProfileScreen = ({ navigation }) => {
   const [email, setEmail] = useState(user?.email || '');
   const [notifications, setNotifications] = useState(true);
   const [reminders, setReminders] = useState(true);
+  const [difficulty, setDifficulty] = useState('normal');
+  const [loadingSettings, setLoadingSettings] = useState(true);
+
+  // Load saved settings on mount
+  useEffect(() => {
+    const loadSettings = async () => {
+      try {
+        const savedDifficulty = await AsyncStorage.getItem('questionDifficulty');
+        if (savedDifficulty) {
+          setDifficulty(savedDifficulty);
+        }
+
+        const savedNotifications = await AsyncStorage.getItem('notifications');
+        if (savedNotifications !== null) {
+          setNotifications(savedNotifications === 'true');
+        }
+
+        const savedReminders = await AsyncStorage.getItem('studyReminders');
+        if (savedReminders !== null) {
+          setReminders(savedReminders === 'true');
+        }
+      } catch (error) {
+        console.error('Error loading settings:', error);
+      } finally {
+        setLoadingSettings(false);
+      }
+    };
+
+    loadSettings();
+  }, []);
 
   const handleSignOut = () => {
     Alert.alert(
@@ -43,14 +74,38 @@ const ProfileScreen = ({ navigation }) => {
   const handleSaveProfile = async () => {
     setLoading(true);
 
-    // Here you would implement the API call to update the user profile
-    // For now, let's simulate a delay
-    setTimeout(() => {
+    try {
+      // Save settings to AsyncStorage
+      await AsyncStorage.setItem('questionDifficulty', difficulty);
+      await AsyncStorage.setItem('notifications', notifications.toString());
+      await AsyncStorage.setItem('studyReminders', reminders.toString());
+
+      // Here you would implement the API call to update the user profile
+      // For now, let's simulate a delay
+      setTimeout(() => {
+        setLoading(false);
+        setIsEditing(false);
+        Alert.alert("Success", "Profile and settings updated successfully");
+      }, 1000);
+    } catch (error) {
+      console.error('Error saving settings:', error);
+      Alert.alert("Error", "Failed to save settings");
       setLoading(false);
-      setIsEditing(false);
-      Alert.alert("Success", "Profile updated successfully");
-    }, 1000);
+    }
   };
+
+  const handleDifficultyChange = (newDifficulty) => {
+    setDifficulty(newDifficulty);
+  };
+
+  if (loadingSettings) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#4CAF50" />
+        <Text style={styles.loadingText}>Loading settings...</Text>
+      </View>
+    );
+  }
 
   return (
     <ScrollView style={styles.container}>
@@ -87,6 +142,58 @@ const ProfileScreen = ({ navigation }) => {
             <Text style={styles.helperText}>
               Email cannot be changed
             </Text>
+          </View>
+
+          <View style={styles.sectionTitle}>
+            <Text style={styles.sectionTitleText}>Question Difficulty</Text>
+          </View>
+
+          <View style={styles.difficultyContainer}>
+            <TouchableOpacity
+              style={[
+                styles.difficultyButton,
+                difficulty === 'easy' && styles.difficultyButtonActive
+              ]}
+              onPress={() => handleDifficultyChange('easy')}
+            >
+              <Text style={[
+                styles.difficultyButtonText,
+                difficulty === 'easy' && styles.difficultyButtonTextActive
+              ]}>Easy</Text>
+              <Text style={styles.difficultyDescription}>Beginner-friendly questions</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[
+                styles.difficultyButton,
+                difficulty === 'normal' && styles.difficultyButtonActive
+              ]}
+              onPress={() => handleDifficultyChange('normal')}
+            >
+              <Text style={[
+                styles.difficultyButtonText,
+                difficulty === 'normal' && styles.difficultyButtonTextActive
+              ]}>Normal</Text>
+              <Text style={styles.difficultyDescription}>Standard learning questions</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[
+                styles.difficultyButton,
+                difficulty === 'hard' && styles.difficultyButtonActive
+              ]}
+              onPress={() => handleDifficultyChange('hard')}
+            >
+              <Text style={[
+                styles.difficultyButtonText,
+                difficulty === 'hard' && styles.difficultyButtonTextActive
+              ]}>Hard</Text>
+              <Text style={styles.difficultyDescription}>Exam-style challenging questions</Text>
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.sectionTitle}>
+            <Text style={styles.sectionTitleText}>Notifications</Text>
           </View>
 
           <View style={styles.toggleContainer}>
@@ -132,11 +239,39 @@ const ProfileScreen = ({ navigation }) => {
         </View>
       ) : (
         <View style={styles.menuContainer}>
+          <View style={styles.settingsSummary}>
+            <Text style={styles.settingsTitle}>Current Settings</Text>
+
+            <View style={styles.settingRow}>
+              <Text style={styles.settingLabel}>Question Difficulty:</Text>
+              <Text style={[
+                styles.settingValue,
+                difficulty === 'easy' && styles.easyDifficulty,
+                difficulty === 'normal' && styles.normalDifficulty,
+                difficulty === 'hard' && styles.hardDifficulty,
+              ]}>
+                {difficulty === 'easy' ? 'Easy (Beginner)' :
+                difficulty === 'normal' ? 'Normal' :
+                'Hard (Exam-Style)'}
+              </Text>
+            </View>
+
+            <View style={styles.settingRow}>
+              <Text style={styles.settingLabel}>Notifications:</Text>
+              <Text style={styles.settingValue}>{notifications ? 'On' : 'Off'}</Text>
+            </View>
+
+            <View style={styles.settingRow}>
+              <Text style={styles.settingLabel}>Study Reminders:</Text>
+              <Text style={styles.settingValue}>{reminders ? 'On' : 'Off'}</Text>
+            </View>
+          </View>
+
           <TouchableOpacity
             style={styles.menuItem}
             onPress={() => setIsEditing(true)}
           >
-            <Text style={styles.menuItemText}>Edit Profile</Text>
+            <Text style={styles.menuItemText}>Edit Profile & Settings</Text>
             <Text style={styles.menuItemIcon}>→</Text>
           </TouchableOpacity>
 
@@ -185,6 +320,17 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F5F5F5',
   },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#F5F5F5',
+  },
+  loadingText: {
+    marginTop: 10,
+    fontSize: 16,
+    color: '#666',
+  },
   header: {
     alignItems: 'center',
     paddingVertical: 30,
@@ -225,6 +371,40 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
     paddingVertical: 10,
+  },
+  settingsSummary: {
+    padding: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
+  },
+  settingsTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 10,
+  },
+  settingRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  settingLabel: {
+    fontSize: 14,
+    color: '#666',
+  },
+  settingValue: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#333',
+  },
+  easyDifficulty: {
+    color: '#4CAF50',
+  },
+  normalDifficulty: {
+    color: '#2196F3',
+  },
+  hardDifficulty: {
+    color: '#F44336',
   },
   menuItem: {
     flexDirection: 'row',
@@ -292,6 +472,43 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#999',
     marginTop: 5,
+  },
+  sectionTitle: {
+    marginBottom: 10,
+    marginTop: 5,
+  },
+  sectionTitleText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  difficultyContainer: {
+    marginBottom: 20,
+  },
+  difficultyButton: {
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    backgroundColor: '#F9F9F9',
+  },
+  difficultyButtonActive: {
+    borderColor: '#4CAF50',
+    backgroundColor: '#E8F5E9',
+  },
+  difficultyButtonText: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#333',
+    marginBottom: 4,
+  },
+  difficultyButtonTextActive: {
+    color: '#4CAF50',
+  },
+  difficultyDescription: {
+    fontSize: 12,
+    color: '#666',
   },
   toggleContainer: {
     flexDirection: 'row',

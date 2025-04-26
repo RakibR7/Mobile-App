@@ -224,7 +224,7 @@ export default function FlashcardsScreen({ route, navigation }) {
 
       console.log(`Using model ${tutorModel} for flashcard generation`);
 
-      const response = await fetch('http://51.21.106.225:5000/api/openai', {
+      const response = await fetch('https://api.teachmetutor.academy/api/openai', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

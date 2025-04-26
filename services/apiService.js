@@ -1,6 +1,6 @@
 // services/apiService.js
 // API base URL pointing to your EC2 server
-const API_BASE_URL = process.env.REACT_APP_API_URL || "http://51.21.106.225:5000";
+const API_BASE_URL = process.env.REACT_APP_API_URL || "https://api.teachmetutor.academy";
 
 // Helper function to handle fetch with timeout
 const fetchWithTimeout = async (url, options = {}, timeout = 8000) => {

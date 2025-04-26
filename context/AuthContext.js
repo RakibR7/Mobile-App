@@ -4,7 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Alert, Platform, NetInfo } from 'react-native';
 
 // API base URL
-const API_BASE_URL = 'http://51.21.106.225:5000';
+const API_BASE_URL = 'https://api.teachmetutor.academy';
 
 // Create context
 const AuthContext = createContext();

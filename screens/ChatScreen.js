@@ -23,7 +23,7 @@ export default function ChatScreen({ route, navigation }) {
   // Fetch conversations
   const fetchConversations = useCallback(async () => {
     try {
-      const response = await fetch(`http://51.21.106.225:5000/api/conversations?tutor=${tutor}`);
+      const response = await fetch(`https://api.teachmetutor.academy/api/conversations?tutor=${tutor}`);
       const data = await response.json();
       setConversations(data);
 
@@ -78,14 +78,14 @@ export default function ChatScreen({ route, navigation }) {
 
     try {
       // Send user message to backend
-      await fetch("http://51.21.106.225:5000/api/messages", {
+      await fetch("https://api.teachmetutor.academy/api/messages", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(userMessage)
       });
 
       // Get AI reply
-      const aiResponseData = await fetch("http://51.21.106.225:5000/api/openai", {
+      const aiResponseData = await fetch("https://api.teachmetutor.academy/api/openai", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -105,7 +105,7 @@ export default function ChatScreen({ route, navigation }) {
       };
 
       // Save AI response to backend
-      await fetch("http://51.21.106.225:5000/api/messages", {
+      await fetch("https://api.teachmetutor.academy/api/messages", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(aiMessage)
@@ -127,7 +127,7 @@ export default function ChatScreen({ route, navigation }) {
   // New conversation handler
   const handleNewConversation = async () => {
     try {
-      const response = await fetch("http://51.21.106.225:5000/api/conversations", {
+      const response = await fetch("https://api.teachmetutor.academy/api/conversations", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -149,7 +149,7 @@ export default function ChatScreen({ route, navigation }) {
   // Delete conversation handler
   const handleDeleteConversation = async (id) => {
     try {
-      await fetch(`http://51.21.106.225:5000/api/conversations/${id}?tutor=${tutor}`, {
+      await fetch(`https://api.teachmetutor.academy/api/conversations/${id}?tutor=${tutor}`, {
         method: "DELETE"
       });
 

@@ -181,7 +181,7 @@ export default function DynamicExerciseScreen({ route, navigation }) {
 
       console.log(`Using model ${tutorModel} for quiz generation with ${difficulty} difficulty`);
 
-      const response = await fetch('http://51.21.106.225:5000/api/openai', {
+      const response = await fetch('https://api.teachmetutor.academy/api/openai', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -421,7 +421,7 @@ export default function DynamicExerciseScreen({ route, navigation }) {
       // Send the question and answer to the AI for evaluation
       const prompt = `Question: "${currentQuestion.question}"\n\nStudent's answer: "${userAnswer}"\n\n${difficultyGuidance}\n\nEvaluate this answer for a ${tutor} student studying ${topicName}. Provide detailed feedback on the answer's correctness, completeness, and areas for improvement. Format your response as JSON: {"correct": true/false, "feedback": "your detailed feedback here"}`;
 
-      const response = await fetch('http://51.21.106.225:5000/api/openai', {
+      const response = await fetch('https://api.teachmetutor.academy/api/openai', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

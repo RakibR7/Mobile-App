@@ -52,7 +52,7 @@ export default function SubtopicProgressScreen({ route, navigation }) {
 
     try {
       // Fetch progress data from API
-      const response = await fetch(`http://51.21.106.225:5000/api/progress/subtopics?userId=${userId}&tutor=${tutor}`);
+      const response = await fetch(`https://api.teachmetutor.academy/api/progress/subtopics?userId=${userId}&tutor=${tutor}`);
 
       if (!response.ok) {
         throw new Error(`Server returned ${response.status}`);

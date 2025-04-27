@@ -1,4 +1,3 @@
-// screens/AboutScreen.js
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView } from 'react-native';
 
@@ -44,7 +43,7 @@ export default function AboutScreen() {
         <Text style={styles.version}>Version 1.0.0</Text>
       </View>
     </ScrollView>
-  );
+  )
 }
 
 const styles = StyleSheet.create({
@@ -90,4 +89,4 @@ const styles = StyleSheet.create({
     marginTop: 30,
     textAlign: 'center',
   },
-});
+})

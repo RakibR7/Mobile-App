@@ -28,11 +28,9 @@ import ProfileScreen from './screens/ProfileScreen';
 
 const Stack = createNativeStackNavigator();
 
-// Main navigation component that checks auth state
 const AppNavigator = () => {
   const { user, loading } = useAuth();
 
-  // Show loading screen while checking authentication
   if (loading) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
@@ -44,7 +42,6 @@ const AppNavigator = () => {
   return (
     <NavigationContainer>
       {user ? (
-        // User is signed in - show main app screens
         <Stack.Navigator
           initialRouteName="Home"
           screenOptions={{
@@ -60,7 +57,7 @@ const AppNavigator = () => {
           <Stack.Screen
             name="Home"
             component={HomeScreen}
-            options={{ title: 'Mentor AI' }}
+            options={{ title: 'AI Mentor' }}
           />
           <Stack.Screen
             name="Chat"
@@ -122,14 +119,12 @@ const AppNavigator = () => {
           />
         </Stack.Navigator>
       ) : (
-        // No user signed in - show authentication screens
         <AuthNavigator />
       )}
     </NavigationContainer>
   );
 };
 
-// Wrap the app with both context providers
 export default function App() {
   return (
     <UserProvider>

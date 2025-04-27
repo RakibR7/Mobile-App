@@ -161,10 +161,6 @@ export const deleteConversation = async (id, tutor) => {
 }
 
 export const getPerformanceData = async (userId, tutor, topic, activityType) => {
-  if (!userId) {
-    console.error('getPerformanceData called without userId');
-    return [];
-  }
   try {
     let url = `${API_BASE_URL}/api/performance?userId=${userId}`;
     if (tutor) url += `&tutor=${tutor}`;
@@ -173,7 +169,7 @@ export const getPerformanceData = async (userId, tutor, topic, activityType) => 
 
     console.log('Fetching performance data from:', url);
 
-    const response = await fetchWithTimeout(url, {}, 5000);
+    const response = await fetchWithTimeout(url, {}, 8000);
 
     if (!response.ok) {
       console.error(`Performance data request failed with status ${response.status}`);
@@ -182,6 +178,25 @@ export const getPerformanceData = async (userId, tutor, topic, activityType) => 
 
     const result = await response.json();
     console.log(`Found ${result.length} ${activityType || ''} history records`);
+
+    // If we got an empty result but didn't specify a topic, no need to try again
+    if (result.length === 0 && topic) {
+      console.log('No records found with specific topic, trying broader search...');
+      // Try again without topic filter
+      return await getPerformanceData(userId, tutor, null, activityType);
+    }
+
+    // Analyze the results to help debugging
+    if (Array.isArray(result) && result.length > 0) {
+      const sessionsCount = result.reduce((sum, item) =>
+        sum + (item.sessions?.length || 0), 0);
+
+      const cardsCount = result.reduce((sum, item) =>
+        sum + (item.cards?.length || 0), 0);
+
+      console.log(`Results contain ${sessionsCount} sessions and ${cardsCount} cards`);
+    }
+
     return result;
   } catch (error) {
     console.error("Error fetching performance data:", error);

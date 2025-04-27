@@ -132,28 +132,36 @@ export default function FlashcardsScreen({ route, navigation }) {
       // Get previously studied flashcards from the performance data
       if (userId) {
         try {
+          console.log(`Fetching flashcards for user: ${userId}, tutor: ${tutor}, topic: ${topic || topicName}`);
+
+          // First try to get data for the specific topic/subtopic
           const performanceData = await getPerformanceData(
             userId,
             tutor,
-            topicName || tutor,
+            null, // Change from topicName to null to get all topics for the tutor
             'flashcard'
           );
+
+          console.log(`Retrieved ${performanceData?.length || 0} flashcard sessions`);
 
           // Extract unique flashcards from the performance data
           const savedCards = [];
           const uniqueQuestions = new Set();
 
-          if (Array.isArray(performanceData)) {
+          if (Array.isArray(performanceData) && performanceData.length > 0) {
             performanceData.forEach(session => {
+              console.log(`Session has ${session.cards?.length || 0} cards`);
+
+              // Look for cards in "cards" array
               if (session.cards && Array.isArray(session.cards) && session.cards.length > 0) {
                 session.cards.forEach(card => {
-                  // Only add cards for this specific topic if specified
-                  if ((!topic || card.subtopic === topic) && !uniqueQuestions.has(card.question)) {
+                  // Don't filter by subtopic initially to debug
+                  if (!uniqueQuestions.has(card.question)) {
                     uniqueQuestions.add(card.question);
                     savedCards.push({
-                      id: card.cardId || savedCards.length + 1,
+                      id: card.cardId || `card_${savedCards.length + 1}`,
                       question: card.question,
-                      answer: card.answer,
+                      answer: card.answer || "No answer provided for this card.",
                       attempts: card.attempts || 0,
                       correct: card.correctAttempts || 0,
                       lastResult: null
@@ -164,16 +172,41 @@ export default function FlashcardsScreen({ route, navigation }) {
             });
           }
 
-          setSavedFlashcards(savedCards);
+          console.log(`Extracted ${savedCards.length} unique flashcards`);
+
+          // If no cards found, try using default cards as a fallback
+          if (savedCards.length === 0) {
+            console.log('No saved flashcards found, using defaults as fallback');
+            let fallbackCards;
+            if (tutor === 'biology' && topic === 'cells') {
+              fallbackCards = getBiologyFlashcards(topic);
+            } else {
+              fallbackCards = getDefaultFlashcards(topicName, tutor);
+            }
+
+            setSavedFlashcards(fallbackCards);
+          } else {
+            setSavedFlashcards(savedCards);
+          }
         } catch (error) {
           console.error('Error fetching performance data:', error);
-          // Don't show error for this part, just set empty saved flashcards
-          setSavedFlashcards([]);
+
+          // Use default cards on error
+          let fallbackCards;
+          if (tutor === 'biology' && topic === 'cells') {
+            fallbackCards = getBiologyFlashcards(topic);
+          } else {
+            fallbackCards = getDefaultFlashcards(topicName, tutor);
+          }
+
+          setSavedFlashcards(fallbackCards);
         }
       }
     } catch (error) {
       console.error('Error in fetchSavedFlashcards:', error);
-      setSavedFlashcards([]);
+      // Set some default cards on any error
+      let fallbackCards = getDefaultFlashcards(topicName, tutor);
+      setSavedFlashcards(fallbackCards);
     } finally {
       setLoading(false);
     }
@@ -914,179 +947,179 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
   },
   card: {
-      position: 'absolute',
-      width: CARD_WIDTH,
-      height: 200,
-      backfaceVisibility: 'hidden',
-      alignItems: 'center',
-      justifyContent: 'center',
-      backgroundColor: '#4CAF50',
-      borderRadius: 10,
-      padding: 20,
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.3,
-      shadowRadius: 4,
-      elevation: 5,
-    },
-    cardBack: {
-      backgroundColor: '#2196F3',
-    },
-    cardText: {
-      fontSize: 18,
-      color: '#FFFFFF',
-      textAlign: 'center',
-    },
-    tapHint: {
-      position: 'absolute',
-      bottom: 10,
-      fontSize: 12,
-      color: 'rgba(255,255,255,0.7)',
-    },
-    flipButton: {
-      backgroundColor: '#FF9800',
-      paddingHorizontal: 20,
-      paddingVertical: 10,
-      borderRadius: 5,
-      marginBottom: 15,
-      alignSelf: 'center',
-    },
-    flipButtonText: {
-      color: '#FFFFFF',
-      fontSize: 16,
-      fontWeight: '500',
-    },
-    ratingContainer: {
-      width: '90%',
-      alignItems: 'center',
-      marginBottom: 15,
-      alignSelf: 'center',
-    },
-    ratingLabel: {
-      fontSize: 16,
-      marginBottom: 10,
-      color: '#333',
-    },
-    ratingButtons: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      width: '100%',
-    },
-    ratingButton: {
-      paddingVertical: 10,
-      borderRadius: 5,
-      alignItems: 'center',
-      width: '48%',
-    },
-    incorrectButton: {
-      backgroundColor: '#F44336',
-    },
-    correctButton: {
-      backgroundColor: '#4CAF50',
-    },
-    ratingButtonText: {
-      color: '#FFFFFF',
-      fontSize: 16,
-      fontWeight: '500',
-    },
-    navigationButtons: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      width: '90%',
-      marginBottom: 15,
-      alignSelf: 'center',
-    },
-    navButton: {
-      backgroundColor: '#9C27B0',
-      paddingHorizontal: 20,
-      paddingVertical: 10,
-      borderRadius: 5,
-      width: '48%',
-      alignItems: 'center',
-    },
-    navButtonText: {
-      color: '#FFFFFF',
-      fontSize: 16,
-    },
-    bottomButtons: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      width: '90%',
-      marginBottom: 20,
-      alignSelf: 'center',
-    },
-    actionButton: {
-      backgroundColor: '#607D8B',
-      paddingHorizontal: 20,
-      paddingVertical: 10,
-      borderRadius: 5,
-      width: '48%',
-      alignItems: 'center',
-    },
-    actionButtonText: {
-      color: '#FFFFFF',
-      fontSize: 16,
-    },
-    progressButton: {
-      backgroundColor: '#2196F3',
-      paddingHorizontal: 20,
-      paddingVertical: 10,
-      borderRadius: 5,
-      marginTop: 10,
-      marginBottom: 20,
-      width: '100%',
-      alignItems: 'center',
-    },
-    progressButtonText: {
-      color: '#FFFFFF',
-      fontSize: 16,
-      fontWeight: '500',
-    },
-    backButton: {
-      backgroundColor: '#FFA000',
-      paddingHorizontal: 20,
-      paddingVertical: 10,
-      borderRadius: 5,
-      width: '100%',
-      alignItems: 'center',
-    },
-    backButtonText: {
-      color: '#FFFFFF',
-      fontSize: 16,
-      fontWeight: '500',
-    },
-    errorContainer: {
-      backgroundColor: 'rgba(244, 67, 54, 0.1)',
-      borderRadius: 5,
-      padding: 10,
-      marginBottom: 15,
-      width: '100%',
-    },
-    errorText: {
-      color: '#D32F2F',
-      fontSize: 14,
-      textAlign: 'center',
-    },
-    difficultyBadge: {
-      position: 'absolute',
-      top: 10,
-      right: 10,
-      paddingHorizontal: 8,
-      paddingVertical: 4,
-      borderRadius: 12,
-    },
-    easyBadge: {
-      backgroundColor: '#4CAF50',
-    },
-    normalBadge: {
-      backgroundColor: '#2196F3',
-    },
-    hardBadge: {
-      backgroundColor: '#F44336',
-    },
-    difficultyText: {
-      color: '#FFFFFF',
-      fontSize: 12,
-      fontWeight: 'bold',
-    },
+    position: 'absolute',
+    width: CARD_WIDTH,
+    height: 200,
+    backfaceVisibility: 'hidden',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#4CAF50',
+    borderRadius: 10,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  cardBack: {
+    backgroundColor: '#2196F3',
+  },
+  cardText: {
+    fontSize: 18,
+    color: '#FFFFFF',
+    textAlign: 'center',
+  },
+  tapHint: {
+    position: 'absolute',
+    bottom: 10,
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.7)',
+  },
+  flipButton: {
+    backgroundColor: '#FF9800',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 5,
+    marginBottom: 15,
+    alignSelf: 'center',
+  },
+  flipButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  ratingContainer: {
+    width: '90%',
+    alignItems: 'center',
+    marginBottom: 15,
+    alignSelf: 'center',
+  },
+  ratingLabel: {
+    fontSize: 16,
+    marginBottom: 10,
+    color: '#333',
+  },
+  ratingButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '100%',
+  },
+  ratingButton: {
+    paddingVertical: 10,
+    borderRadius: 5,
+    alignItems: 'center',
+    width: '48%',
+  },
+  incorrectButton: {
+    backgroundColor: '#F44336',
+  },
+  correctButton: {
+    backgroundColor: '#4CAF50',
+  },
+  ratingButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  navigationButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '90%',
+    marginBottom: 15,
+    alignSelf: 'center',
+  },
+  navButton: {
+    backgroundColor: '#9C27B0',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 5,
+    width: '48%',
+    alignItems: 'center',
+  },
+  navButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+  },
+  bottomButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '90%',
+    marginBottom: 20,
+    alignSelf: 'center',
+  },
+  actionButton: {
+    backgroundColor: '#607D8B',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 5,
+    width: '48%',
+    alignItems: 'center',
+  },
+  actionButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+  },
+  progressButton: {
+    backgroundColor: '#2196F3',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 5,
+    marginTop: 10,
+    marginBottom: 20,
+    width: '100%',
+    alignItems: 'center',
+  },
+  progressButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  backButton: {
+    backgroundColor: '#FFA000',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 5,
+    width: '100%',
+    alignItems: 'center',
+  },
+  backButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  errorContainer: {
+    backgroundColor: 'rgba(244, 67, 54, 0.1)',
+    borderRadius: 5,
+    padding: 10,
+    marginBottom: 15,
+    width: '100%',
+  },
+  errorText: {
+    color: '#D32F2F',
+    fontSize: 14,
+    textAlign: 'center',
+  },
+  difficultyBadge: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  easyBadge: {
+    backgroundColor: '#4CAF50',
+  },
+  normalBadge: {
+    backgroundColor: '#2196F3',
+  },
+  hardBadge: {
+    backgroundColor: '#F44336',
+  },
+  difficultyText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
 });

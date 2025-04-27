@@ -1,9 +1,9 @@
-// App.js
+// App.js - Updated to handle authentication better
 import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { StatusBar } from 'expo-status-bar';
-import { ActivityIndicator, View } from 'react-native';
+import { ActivityIndicator, View, Text } from 'react-native';
 
 // Context Providers
 import { UserProvider } from './context/UserContext';
@@ -28,13 +28,16 @@ import ProfileScreen from './screens/ProfileScreen';
 
 const Stack = createNativeStackNavigator();
 
+// Main navigation component that checks auth state
 const AppNavigator = () => {
   const { user, loading } = useAuth();
 
+  // Show loading screen while checking authentication
   if (loading) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F5F5F5' }}>
         <ActivityIndicator size="large" color="#4CAF50" />
+        <Text style={{ marginTop: 20, fontSize: 16, color: '#666' }}>Loading profile...</Text>
       </View>
     );
   }
@@ -42,6 +45,7 @@ const AppNavigator = () => {
   return (
     <NavigationContainer>
       {user ? (
+        // User is signed in - show main app screens
         <Stack.Navigator
           initialRouteName="Home"
           screenOptions={{
@@ -57,7 +61,7 @@ const AppNavigator = () => {
           <Stack.Screen
             name="Home"
             component={HomeScreen}
-            options={{ title: 'AI Mentor' }}
+            options={{ title: 'Mentor AI' }}
           />
           <Stack.Screen
             name="Chat"
@@ -119,12 +123,14 @@ const AppNavigator = () => {
           />
         </Stack.Navigator>
       ) : (
+        // No user signed in - show authentication screens
         <AuthNavigator />
       )}
     </NavigationContainer>
   );
 };
 
+// Wrap the app with providers - important: AuthProvider should be inside UserProvider
 export default function App() {
   return (
     <UserProvider>

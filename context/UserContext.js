@@ -1,50 +1,56 @@
-// context/UserContext.js - Simplified version without UUID dependency
+// context/UserContext.js - Corrected version without event listener
 import React, { createContext, useState, useEffect, useContext } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Create context
 const UserContext = createContext();
 
-// Simple ID generator function
-const generateSimpleId = () => {
-  return 'user_' +
-    Math.random().toString(36).substring(2, 10) +
-    '_' +
-    Date.now().toString(36);
-};
-
 export const UserProvider = ({ children }) => {
   const [userId, setUserId] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Load or create user ID
+    // Load user ID
     const loadUserId = async () => {
       try {
         // Try to load existing user ID
         let storedId = await AsyncStorage.getItem('user_id');
 
-        if (!storedId) {
-          // Generate new ID if none exists
-          storedId = generateSimpleId();
-          await AsyncStorage.setItem('user_id', storedId);
-          console.log('Created new user ID:', storedId);
+        if (storedId) {
+          console.log('UserContext: Using stored user ID:', storedId);
+          setUserId(storedId);
         } else {
-          console.log('Loaded existing user ID:', storedId);
+          // If no user ID is found, we'll wait for AuthContext to set one
+          console.log('UserContext: No user ID found in storage');
         }
-
-        setUserId(storedId);
       } catch (error) {
         console.error('Error managing user ID:', error);
-        // Fallback to in-memory ID if storage fails
-        setUserId(generateSimpleId());
       } finally {
         setLoading(false);
       }
     };
 
     loadUserId();
-  }, []);
+
+    // Instead of using AsyncStorage event listener (which doesn't exist),
+    // we'll use a polling approach to check for user_id changes
+    const checkInterval = setInterval(async () => {
+      try {
+        const currentId = await AsyncStorage.getItem('user_id');
+        if (currentId && currentId !== userId) {
+          console.log('UserContext: user_id changed to', currentId);
+          setUserId(currentId);
+        }
+      } catch (error) {
+        console.error('Error checking user ID:', error);
+      }
+    }, 2000); // Check every 2 seconds
+
+    // Clean up interval on unmount
+    return () => {
+      clearInterval(checkInterval);
+    };
+  }, [userId]);
 
   // Return provider with value
   return (

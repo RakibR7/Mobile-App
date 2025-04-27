@@ -1,3 +1,4 @@
+// services/apiService.js
 const API_BASE_URL = process.env.REACT_APP_API_URL || "https://api.teachmetutor.academy";
 
 const fetchWithTimeout = async (url, options = {}, timeout = 8000) => {
@@ -62,7 +63,6 @@ export const getConversations = async (tutor) => {
     return [];
   }
 }
-
 
 export const createConversation = async (title, model, tutor, retries = 2) => {
   let lastError;
@@ -137,11 +137,9 @@ export const saveMessage = async (conversationId, sender, text, model, tutor, re
     }
   }
 
-
   console.error("Failed to save message after retries");
   return null;
 }
-
 
 export const deleteConversation = async (id, tutor) => {
   try {
@@ -163,6 +161,10 @@ export const deleteConversation = async (id, tutor) => {
 }
 
 export const getPerformanceData = async (userId, tutor, topic, activityType) => {
+  if (!userId) {
+    console.error('getPerformanceData called without userId');
+    return [];
+  }
   try {
     let url = `${API_BASE_URL}/api/performance?userId=${userId}`;
     if (tutor) url += `&tutor=${tutor}`;
@@ -212,20 +214,32 @@ let performanceUpdateQueue = [];
 let isProcessingQueue = false;
 
 export const updatePerformanceData = async (performanceData) => {
+  // Make sure userId exists
+  if (!performanceData.userId) {
+    console.error('updatePerformanceData called without userId in data');
+    return null;
+  }
+
+  // Add to queue
   performanceUpdateQueue.push(performanceData);
 
+  // If already processing, just return
   if (isProcessingQueue) return null;
+
+  // Process queue
   isProcessingQueue = true;
 
   while (performanceUpdateQueue.length > 0) {
     const currentData = performanceUpdateQueue[0];
     try {
+      // Ensure all numeric values are numbers, not strings
       if (currentData.sessionData) {
         currentData.sessionData.cardsStudied = Number(currentData.sessionData.cardsStudied || 0);
         currentData.sessionData.correctAnswers = Number(currentData.sessionData.correctAnswers || 0);
         currentData.sessionData.timeSpent = Number(currentData.sessionData.timeSpent || 0);
       }
 
+      // Also normalize the sessions array if present
       if (currentData.sessions && Array.isArray(currentData.sessions)) {
         currentData.sessions.forEach(session => {
           session.cardsStudied = Number(session.cardsStudied || 0);
@@ -234,7 +248,7 @@ export const updatePerformanceData = async (performanceData) => {
         })
       }
 
-      console.log(`Saving ${currentData.activityType} performance:`, {
+      console.log(`Saving ${currentData.activityType} performance for user ${currentData.userId}:`, {
         activityType: currentData.activityType,
         cards: currentData.cards?.length || 0,
         sessionData: currentData.sessionData,
@@ -263,18 +277,25 @@ export const updatePerformanceData = async (performanceData) => {
         }
       } catch (fetchError) {
         console.error("Fetch error during performance update:", fetchError);
+        // Keep in queue if it's a network issue
         if (fetchError.name === 'TypeError' || fetchError.name === 'AbortError') {
+          // For network errors, stop processing for now and retry later
           isProcessingQueue = false;
           return null;
         }
       }
 
+      // Remove processed item
       performanceUpdateQueue.shift();
     } catch (error) {
       console.error("Error updating performance data:", error);
+
+      // For network errors, we'll keep in queue for retry later
       if (error.name !== 'TypeError') {
+        // For other errors, remove from queue to prevent infinite retries
         performanceUpdateQueue.shift();
       } else {
+        // For network errors, stop processing for now
         break;
       }
     }

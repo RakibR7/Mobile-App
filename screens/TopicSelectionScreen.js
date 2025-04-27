@@ -1,4 +1,3 @@
-// screens/TopicSelectionScreen.js
 import React, { useState, useEffect, useRef } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView,
@@ -11,23 +10,22 @@ export default function TopicSelectionScreen({ route, navigation }) {
   const [highlightedTopic, setHighlightedTopic] = useState(preSelectedTopic || null);
   const scrollViewRef = useRef(null);
 
-  // Get topics for the selected tutor
   const getTopics = () => {
     if (tutor === 'biology') {
       return [
-        { id: 'cells', name: 'Cell Structure & Function', icon: '🔬' },
-        { id: 'genetics', name: 'Genetics & Heredity', icon: '🧬' },
-        { id: 'evolution', name: 'Evolution & Natural Selection', icon: '🦖' },
-        { id: 'ecosystems', name: 'Ecosystems & Environment', icon: '🌳' },
-        { id: 'anatomy', name: 'Human Anatomy', icon: '🫀' }
+        { id: 'cells', name: 'Cell Structure & Function'},
+        { id: 'genetics', name: 'Genetics & Heredity'},
+        { id: 'evolution', name: 'Evolution & Natural Selection'},
+        { id: 'ecosystems', name: 'Ecosystems & Environment'},
+        { id: 'anatomy', name: 'Human Anatomy'}
       ];
     } else if (tutor === 'python') {
       return [
-        { id: 'variables', name: 'Variables & Data Types', icon: '🔤' },
-        { id: 'functions', name: 'Functions & Methods', icon: '⚙️' },
-        { id: 'loops', name: 'Loops & Control Flow', icon: '🔄' },
-        { id: 'oop', name: 'Object-Oriented Programming', icon: '📦' },
-        { id: 'libraries', name: 'Libraries & Modules', icon: '📚' }
+        { id: 'variables', name: 'Variables & Data Types'},
+        { id: 'functions', name: 'Functions & Methods'},
+        { id: 'loops', name: 'Loops & Control Flow'},
+        { id: 'oop', name: 'Object-Oriented Programming'},
+        { id: 'libraries', name: 'Libraries & Modules'}
       ];
     }
     return [];
@@ -36,15 +34,10 @@ export default function TopicSelectionScreen({ route, navigation }) {
   const topics = getTopics();
 
   useEffect(() => {
-    // If preSelectedTopic is provided, scroll to it or highlight it
     if (preSelectedTopic) {
       setHighlightedTopic(preSelectedTopic);
-
-      // Add a small delay before scrolling to ensure the UI is ready
       setTimeout(() => {
         if (scrollViewRef.current) {
-          // You would need element measurement for proper scrolling in a real app
-          // This is a simplified version
           scrollViewRef.current.scrollTo({ y: 100, animated: true });
         }
       }, 500);

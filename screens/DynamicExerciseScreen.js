@@ -1,4 +1,3 @@
-// screens/DynamicExerciseScreen.js
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, TextInput, TouchableOpacity,
@@ -8,7 +7,6 @@ import { useUser } from '../context/UserContext';
 import { updatePerformanceData, getPerformanceData } from '../services/apiService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// Default questions by topic
 const getDefaultQuestions = (topic, tutor) => {
   return [
     {
@@ -23,10 +21,9 @@ const getDefaultQuestions = (topic, tutor) => {
       id: 3,
       question: `How would you apply ${topic || tutor} in a real-world scenario?`
     }
-  ];
-};
+  ]
+}
 
-// Specific questions for biology cells topic
 const getCellsQuestions = () => {
   return [
     {
@@ -41,8 +38,8 @@ const getCellsQuestions = () => {
       id: 3,
       question: "Compare and contrast the structure and function of rough and smooth endoplasmic reticulum."
     }
-  ];
-};
+  ]
+}
 
 export default function DynamicExerciseScreen({ route, navigation }) {
   const { tutor, topic, topicName } = route.params;
@@ -62,20 +59,18 @@ export default function DynamicExerciseScreen({ route, navigation }) {
     questionsAttempted: 0,
     correctAnswers: 0,
     timeSpent: 0
-  });
+  })
 
   useEffect(() => {
-    // Fetch previous questions when component mounts
     fetchPreviousQuestions();
     setSessionStartTime(Date.now());
 
-    // Cleanup function to save session data when leaving the screen
     return () => {
       if (!showQuizOptions && questions.length > 0 && sessionStats.questionsAttempted > 0) {
         saveSession();
       }
-    };
-  }, []);
+    }
+  }, [])
 
   const fetchPreviousQuestions = async () => {
     try {
@@ -84,35 +79,31 @@ export default function DynamicExerciseScreen({ route, navigation }) {
 
       if (userId) {
         try {
-          // Get performance data to extract previous questions
           const performanceData = await getPerformanceData(
             userId,
             tutor,
             topicName || tutor,
             'quiz'
-          );
+          )
 
           let previousQuestionsFound = [];
 
           if (Array.isArray(performanceData) && performanceData.length > 0) {
-            // Extract questions from all previous quiz sessions
             performanceData.forEach(session => {
               if (session.cards && Array.isArray(session.cards)) {
                 session.cards.forEach(card => {
-                  // Only include cards for this specific topic if specified
                   if ((!topic || card.subtopic === topic) && card.question) {
                     previousQuestionsFound.push({
                       id: card.cardId || previousQuestionsFound.length + 1,
                       question: card.question,
-                      answer: card.answer // This might be undefined for some cards
-                    });
+                      answer: card.answer
+                    })
                   }
-                });
+                })
               }
-            });
+            })
           }
 
-          // Remove duplicates by question text
           const uniqueQuestions = [];
           const questionTexts = new Set();
 
@@ -121,7 +112,7 @@ export default function DynamicExerciseScreen({ route, navigation }) {
               questionTexts.add(q.question);
               uniqueQuestions.push(q);
             }
-          });
+          })
 
           setPreviousQuestions(uniqueQuestions);
         } catch (error) {
@@ -135,15 +126,14 @@ export default function DynamicExerciseScreen({ route, navigation }) {
     } finally {
       setLoading(false);
     }
-  };
+  }
 
   const generateQuestions = async () => {
     setLoading(true);
     setNetworkError(false);
 
     try {
-      // Get the user's preferred difficulty level
-      let difficulty = 'normal'; // Default
+      let difficulty = 'normal';
       try {
         const savedDifficulty = await AsyncStorage.getItem('questionDifficulty');
         if (savedDifficulty) {
@@ -153,16 +143,13 @@ export default function DynamicExerciseScreen({ route, navigation }) {
         console.log('Could not load difficulty setting:', error);
       }
 
-      // Get the appropriate model based on tutor
       const tutorModel = {
         biology: 'ft:gpt-3.5-turbo-0125:personal:csp-biology-finetuning-data10-20000:BJN7IqeS',
         python: 'ft:gpt-3.5-turbo-0125:personal:dr1-csv6-shortened-3381:B0DlvD7p'
       }[tutor] || 'gpt-3.5-turbo';
 
-      // Generate unique identifier for variety
       const uniqueId = Math.random().toString(36).substring(2, 8);
 
-      // Create difficulty-specific guidance
       let difficultyGuide = '';
       if (difficulty === 'easy') {
         difficultyGuide = 'Create beginner-friendly questions that focus on basic concepts and definitions. Use simple language and provide clear context. These should help build foundational knowledge.';
@@ -186,7 +173,7 @@ export default function DynamicExerciseScreen({ route, navigation }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           message: prompt,
-          model: tutorModel, // Use the subject-specific model
+          model: tutorModel,
           tutor
         }),
         timeout: 15000
@@ -198,10 +185,8 @@ export default function DynamicExerciseScreen({ route, navigation }) {
 
       const data = await response.json();
 
-      // Parse the AI response to extract the questions
       let parsedQuestions;
       try {
-        // Try different parsing strategies
         if (typeof data.response === 'string') {
           const jsonMatch = data.response.match(/\[\s*\{.*\}\s*\]/s);
           if (jsonMatch) {
@@ -217,7 +202,6 @@ export default function DynamicExerciseScreen({ route, navigation }) {
           throw new Error("Unexpected response format");
         }
 
-        // Add difficulty property
         parsedQuestions = parsedQuestions.map((q, idx) => ({
           ...q,
           difficulty: difficulty
@@ -225,7 +209,6 @@ export default function DynamicExerciseScreen({ route, navigation }) {
       } catch (parseError) {
         console.error('Error parsing questions:', parseError);
 
-        // Use default questions as fallback, but adjust for difficulty
         let fallbackQuestions;
         if (tutor === 'biology' && topic === 'cells') {
           fallbackQuestions = getCellsQuestions();
@@ -233,7 +216,6 @@ export default function DynamicExerciseScreen({ route, navigation }) {
           fallbackQuestions = getDefaultQuestions(topicName, tutor);
         }
 
-        // Modify questions based on difficulty
         fallbackQuestions = fallbackQuestions.map(q => {
           let modifiedQuestion = q.question;
 
@@ -251,8 +233,6 @@ export default function DynamicExerciseScreen({ route, navigation }) {
             difficulty: difficulty
           };
         });
-
-        // Randomize order
         parsedQuestions = fallbackQuestions.sort(() => Math.random() - 0.5);
       }
 
@@ -271,7 +251,6 @@ export default function DynamicExerciseScreen({ route, navigation }) {
       console.error('Error generating questions:', error);
       setNetworkError(true);
 
-      // Try to get the saved difficulty
       let difficulty = 'normal';
       try {
         const savedDifficulty = await AsyncStorage.getItem('questionDifficulty');
@@ -282,7 +261,6 @@ export default function DynamicExerciseScreen({ route, navigation }) {
         console.log('Could not load difficulty setting on error:', err);
       }
 
-      // Use default questions as fallback
       let fallbackQuestions;
       if (tutor === 'biology' && topic === 'cells') {
         fallbackQuestions = getCellsQuestions();
@@ -290,11 +268,9 @@ export default function DynamicExerciseScreen({ route, navigation }) {
         fallbackQuestions = getDefaultQuestions(topicName, tutor);
       }
 
-      // Add difficulty-based modifications
       fallbackQuestions = fallbackQuestions.map(q => {
         let modifiedQuestion = q.question;
 
-        // Modify question based on difficulty
         if (difficulty === 'easy') {
           modifiedQuestion = `[Beginner Level] ${q.question}`;
         } else if (difficulty === 'normal') {
@@ -324,7 +300,7 @@ export default function DynamicExerciseScreen({ route, navigation }) {
     } finally {
       setLoading(false);
     }
-  };
+  }
 
   const saveSession = async () => {
     if (sessionStats.questionsAttempted === 0 || !userId) return;
@@ -332,7 +308,6 @@ export default function DynamicExerciseScreen({ route, navigation }) {
     try {
       const timeSpent = Math.floor((Date.now() - sessionStartTime) / 1000);
 
-      // Prepare card data for each question with subtopic
       const cardsData = questions.map(question => {
         const questionId = String(question.id);
         const userAnswer = answers[questionId] || '';
@@ -342,19 +317,18 @@ export default function DynamicExerciseScreen({ route, navigation }) {
           cardId: questionId,
           question: question.question,
           answer: userAnswer,
-          subtopic: topic || 'general', // Use topic as subtopic
+          subtopic: topic || 'general',
           attempts: fbk.evaluated ? 1 : 0,
           correctAttempts: fbk.correct ? 1 : 0
-        };
+        }
       }).filter(card => card.attempts > 0);
 
-      // Prepare session data
       const sessionData = {
         cardsStudied: sessionStats.questionsAttempted,
         correctAnswers: sessionStats.correctAnswers,
         timeSpent,
-        subtopic: topic || 'general' // Use topic as subtopic
-      };
+        subtopic: topic || 'general'
+      }
 
       console.log("Saving quiz performance:", {
         userId,
@@ -364,9 +338,8 @@ export default function DynamicExerciseScreen({ route, navigation }) {
         activityType: 'quiz',
         sessionData,
         cardsData: cardsData.length
-      });
+      })
 
-      // Send data to server
       await updatePerformanceData({
         userId,
         tutor,
@@ -375,18 +348,17 @@ export default function DynamicExerciseScreen({ route, navigation }) {
         activityType: 'quiz',
         sessionData,
         cards: cardsData
-      });
-
+      })
       console.log("Quiz session saved successfully");
 
     } catch (error) {
       console.error('Error saving session data:', error);
     }
-  };
+  }
 
   const handleAnswerChange = (id, text) => {
     setAnswers({...answers, [id]: text});
-  };
+  }
 
   const evaluateCurrentAnswer = async () => {
     if (!answers[questions[currentQuestionIndex].id] ||
@@ -401,14 +373,11 @@ export default function DynamicExerciseScreen({ route, navigation }) {
       const currentQuestion = questions[currentQuestionIndex];
       const userAnswer = answers[currentQuestion.id];
       const questionDifficulty = currentQuestion.difficulty || 'normal';
-
-      // Get the appropriate model based on tutor
       const tutorModel = {
         biology: 'ft:gpt-3.5-turbo-0125:personal:csp-biology-finetuning-data10-20000:BJN7IqeS',
         python: 'ft:gpt-3.5-turbo-0125:personal:dr1-csv6-shortened-3381:B0DlvD7p'
       }[tutor] || 'gpt-3.5-turbo';
 
-      // Adjust feedback style based on difficulty
       let difficultyGuidance = '';
       if (questionDifficulty === 'easy') {
         difficultyGuidance = `This is a beginner-level question. Be encouraging and supportive in your feedback. Focus on clarifying basic concepts and providing simple explanations. Use friendly, accessible language.`;
@@ -417,8 +386,6 @@ export default function DynamicExerciseScreen({ route, navigation }) {
       } else if (questionDifficulty === 'hard') {
         difficultyGuidance = `This is an advanced-level question. Provide thorough, detailed feedback with rigorous analysis. Point out nuances and deeper connections. Set high standards for accuracy and completeness.`;
       }
-
-      // Send the question and answer to the AI for evaluation
       const prompt = `Question: "${currentQuestion.question}"\n\nStudent's answer: "${userAnswer}"\n\n${difficultyGuidance}\n\nEvaluate this answer for a ${tutor} student studying ${topicName}. Provide detailed feedback on the answer's correctness, completeness, and areas for improvement. Format your response as JSON: {"correct": true/false, "feedback": "your detailed feedback here"}`;
 
       const response = await fetch('https://api.teachmetutor.academy/api/openai', {
@@ -429,19 +396,16 @@ export default function DynamicExerciseScreen({ route, navigation }) {
           model: tutorModel,
           tutor
         }),
-        timeout: 15000 // Longer timeout for evaluation responses
-      });
+        timeout: 15000
+      })
 
       if (!response.ok) {
         throw new Error(`Server responded with status ${response.status}`);
       }
 
       const data = await response.json();
-
-      // Parse the AI response to extract the evaluation
       let evaluation;
       try {
-        // Try different parsing strategies
         if (typeof data.response === 'string') {
           const jsonMatch = data.response.match(/\{.*\}/s);
           if (jsonMatch) {
@@ -458,52 +422,37 @@ export default function DynamicExerciseScreen({ route, navigation }) {
         }
       } catch (parseError) {
         console.error('Error parsing evaluation:', parseError);
-
-        // Provide a basic evaluation when parsing fails
         evaluation = {
           correct: false,
           feedback: `I couldn't properly analyze your answer. Here's some general guidance on this ${questionDifficulty} question: The question is asking about ${currentQuestion.question.split(' ').slice(0, 5).join(' ')}... When answering, focus on key concepts and provide specific examples. Try to be precise and thorough in your explanation.`
-        };
+        }
       }
-
-      // Add 'evaluated' flag to the feedback
       evaluation.evaluated = true;
-      // Also add difficulty level
       evaluation.difficulty = questionDifficulty;
-
-      // Update feedback state with the evaluation
       setFeedback({
         ...feedback,
         [currentQuestion.id]: evaluation
-      });
-
-      // Update session stats
+      })
       setSessionStats(prev => ({
         ...prev,
         questionsAttempted: prev.questionsAttempted + 1,
         correctAnswers: evaluation.correct ? prev.correctAnswers + 1 : prev.correctAnswers
-      }));
+      }))
 
     } catch (error) {
       console.error('Error evaluating answer:', error);
-
-      // Get the current difficulty
       const questionDifficulty = questions[currentQuestionIndex].difficulty || 'normal';
-
-      // Provide a fallback evaluation when the API call fails
       const fallbackEvaluation = {
         correct: false,
         feedback: `Unable to evaluate your answer at this time. For this ${questionDifficulty} level question, consider reviewing the key concepts related to ${topicName} and try again.`,
         evaluated: true,
         difficulty: questionDifficulty
-      };
+      }
 
       setFeedback({
         ...feedback,
         [questions[currentQuestionIndex].id]: fallbackEvaluation
-      });
-
-      // Still count the question as attempted
+      })
       setSessionStats(prev => ({
         ...prev,
         questionsAttempted: prev.questionsAttempted + 1
@@ -511,13 +460,12 @@ export default function DynamicExerciseScreen({ route, navigation }) {
     } finally {
       setSubmitting(false);
     }
-  };
+  }
 
   const moveToNextQuestion = () => {
     if (currentQuestionIndex < questions.length - 1) {
       setCurrentQuestionIndex(currentQuestionIndex + 1);
     } else {
-      // All questions answered - show session summary
       const timeSpent = Math.floor((Date.now() - sessionStartTime) / 1000);
       const minutes = Math.floor(timeSpent / 60);
       const seconds = timeSpent % 60;
@@ -552,9 +500,9 @@ export default function DynamicExerciseScreen({ route, navigation }) {
             style: 'cancel'
           }
         ]
-      );
+      )
     }
-  };
+  }
 
   const startRevision = () => {
     if (previousQuestions.length === 0) {
@@ -584,9 +532,9 @@ export default function DynamicExerciseScreen({ route, navigation }) {
       questionsAttempted: 0,
       correctAnswers: 0,
       timeSpent: 0
-    });
+    })
     setSessionStartTime(Date.now());
-  };
+  }
 
   const viewProgress = () => {
     if (!showQuizOptions && sessionStats.questionsAttempted > 0) {
@@ -595,8 +543,8 @@ export default function DynamicExerciseScreen({ route, navigation }) {
     navigation.navigate('QuizHistory', {
       tutor,
       topic: topic || topicName
-    });
-  };
+    })
+  }
 
   if (loading) {
     return (
@@ -606,7 +554,7 @@ export default function DynamicExerciseScreen({ route, navigation }) {
           {showQuizOptions ? "Loading quiz options..." : "Generating questions..."}
         </Text>
       </View>
-    );
+    )
   }
 
   if (showQuizOptions) {
@@ -792,7 +740,7 @@ export default function DynamicExerciseScreen({ route, navigation }) {
         </TouchableOpacity>
       </View>
     </ScrollView>
-  );
+  )
 }
 
 const styles = StyleSheet.create({
@@ -1041,4 +989,4 @@ const styles = StyleSheet.create({
       fontSize: 14,
       textAlign: 'center',
     }
-});
+})

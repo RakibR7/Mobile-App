@@ -1,4 +1,3 @@
-// screens/ChatScreen.js
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
@@ -18,9 +17,8 @@ export default function ChatScreen({ route, navigation }) {
   const [isLoading, setIsLoading] = useState(false);
   const [conversations, setConversations] = useState([]);
   const [activeConversationId, setActiveConversationId] = useState(conversationId);
-  const [showSidebar, setShowSidebar] = useState(false); // Controls sidebar visibility
+  const [showSidebar, setShowSidebar] = useState(false);
 
-  // Fetch conversations
   const fetchConversations = useCallback(async () => {
     try {
       const response = await fetch(`https://api.teachmetutor.academy/api/conversations?tutor=${tutor}`);
@@ -35,7 +33,6 @@ export default function ChatScreen({ route, navigation }) {
     }
   }, [tutor, activeConversationId]);
 
-  // Fetch messages for active conversation
   const fetchMessages = useCallback(async () => {
     if (!activeConversationId) return;
 
@@ -49,17 +46,14 @@ export default function ChatScreen({ route, navigation }) {
     }
   }, [activeConversationId, conversations]);
 
-  // Initial load
   useEffect(() => {
     fetchConversations();
   }, [fetchConversations]);
 
-  // Load messages when conversation changes
   useEffect(() => {
     fetchMessages();
   }, [fetchMessages, activeConversationId]);
 
-  // Send message function
   const handleSend = async () => {
     if (!userInput.trim() || !activeConversationId) return;
 
@@ -72,19 +66,15 @@ export default function ChatScreen({ route, navigation }) {
     };
 
     setIsLoading(true);
-
-    // Update UI immediately
     setMessages(prev => [...prev, userMessage]);
 
     try {
-      // Send user message to backend
       await fetch("https://api.teachmetutor.academy/api/messages", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(userMessage)
       });
 
-      // Get AI reply
       const aiResponseData = await fetch("https://api.teachmetutor.academy/api/openai", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -104,17 +94,12 @@ export default function ChatScreen({ route, navigation }) {
         conversationId: activeConversationId
       };
 
-      // Save AI response to backend
       await fetch("https://api.teachmetutor.academy/api/messages", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(aiMessage)
       });
-
-      // Update UI with AI response
       setMessages(prev => [...prev, aiMessage]);
-
-      // Refresh conversation list to update titles
       fetchConversations();
     } catch (error) {
       console.error("Error sending message:", error);
@@ -124,7 +109,6 @@ export default function ChatScreen({ route, navigation }) {
     }
   };
 
-  // New conversation handler
   const handleNewConversation = async () => {
     try {
       const response = await fetch("https://api.teachmetutor.academy/api/conversations", {
@@ -144,9 +128,8 @@ export default function ChatScreen({ route, navigation }) {
     } catch (error) {
       console.error("Error creating conversation:", error);
     }
-  };
+  }
 
-  // Delete conversation handler
   const handleDeleteConversation = async (id) => {
     try {
       await fetch(`https://api.teachmetutor.academy/api/conversations/${id}?tutor=${tutor}`, {
@@ -167,28 +150,24 @@ export default function ChatScreen({ route, navigation }) {
     } catch (error) {
       console.error("Error deleting conversation:", error);
     }
-  };
+  }
 
-  // Switch conversation handler
   const switchConversation = (id) => {
     setActiveConversationId(id);
-    setShowSidebar(false); // Auto-hide sidebar after selecting conversation
-  };
+    setShowSidebar(false);
+  }
 
-  // Toggle sidebar visibility
   const toggleSidebar = () => {
     setShowSidebar(!showSidebar);
-  };
+  }
 
-  // Render a message
   const renderMessage = ({ item }) => (
     <View style={[styles.messageContainer,
           item.sender === "user" ? styles.userMessage : styles.aiMessage]}>
       <Text style={styles.messageText}>{item.text}</Text>
     </View>
-  );
+  )
 
-  // Render a conversation item
   const renderConversationItem = ({ item }) => (
     <View style={[
       styles.conversationItem,
@@ -207,13 +186,12 @@ export default function ChatScreen({ route, navigation }) {
         <Text style={styles.deleteButtonText}>X</Text>
       </TouchableOpacity>
     </View>
-  );
+  )
 
-  // Get active conversation title
   const getActiveTitle = () => {
     const activeConvo = conversations.find(c => c._id === activeConversationId);
     return activeConvo ? (activeConvo.title || "Untitled Conversation") : "No Conversation";
-  };
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -244,7 +222,7 @@ export default function ChatScreen({ route, navigation }) {
         )}
 
         <View style={styles.chatContainer}>
-          {/* Chat header with conversation title and history button */}
+          {}
           <View style={styles.chatHeader}>
             <Text style={styles.chatTitle}>{getActiveTitle()}</Text>
             <TouchableOpacity
@@ -281,7 +259,7 @@ export default function ChatScreen({ route, navigation }) {
         </View>
       </View>
     </SafeAreaView>
-  );
+  )
 }
 
 const styles = StyleSheet.create({
@@ -419,4 +397,4 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: 'bold',
   },
-});
+})

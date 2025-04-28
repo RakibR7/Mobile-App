@@ -140,7 +140,7 @@ const styles = StyleSheet.create({
   },
   correctFeedback: {
     backgroundColor: '#e6f7e6',
-    borderColor: '#4CAF50',
+    borderColor: '#FE7648',
     borderWidth: 1,
   },
   incorrectFeedback: {
@@ -152,7 +152,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   submitButton: {
-    backgroundColor: '#4CAF50',
+    backgroundColor: '#FE7648',
     padding: 15,
     borderRadius: 8,
     alignItems: 'center',

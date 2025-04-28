@@ -101,7 +101,7 @@ const ProfileScreen = ({ navigation }) => {
   if (loadingSettings) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#4CAF50" />
+        <ActivityIndicator size="large" color="#FE7648" />
         <Text style={styles.loadingText}>Loading settings...</Text>
       </View>
     );
@@ -201,7 +201,7 @@ const ProfileScreen = ({ navigation }) => {
             <Switch
               value={notifications}
               onValueChange={setNotifications}
-              trackColor={{ false: '#D1D1D1', true: '#4CAF50' }}
+              trackColor={{ false: '#D1D1D1', true: '#FE7648' }}
               thumbColor="#FFFFFF"
             />
           </View>
@@ -211,7 +211,7 @@ const ProfileScreen = ({ navigation }) => {
             <Switch
               value={reminders}
               onValueChange={setReminders}
-              trackColor={{ false: '#D1D1D1', true: '#4CAF50' }}
+              trackColor={{ false: '#D1D1D1', true: '#FE7648' }}
               thumbColor="#FFFFFF"
             />
           </View>
@@ -334,7 +334,7 @@ const styles = StyleSheet.create({
   header: {
     alignItems: 'center',
     paddingVertical: 30,
-    backgroundColor: '#4CAF50',
+    backgroundColor: '#FE7648',
   },
   profileInitials: {
     width: 80,
@@ -398,7 +398,7 @@ const styles = StyleSheet.create({
     color: '#333',
   },
   easyDifficulty: {
-    color: '#4CAF50',
+    color: '#FE7648',
   },
   normalDifficulty: {
     color: '#2196F3',
@@ -494,7 +494,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#F9F9F9',
   },
   difficultyButtonActive: {
-    borderColor: '#4CAF50',
+    borderColor: '#FE7648',
     backgroundColor: '#E8F5E9',
   },
   difficultyButtonText: {
@@ -504,7 +504,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   difficultyButtonTextActive: {
-    color: '#4CAF50',
+    color: '#FE7648',
   },
   difficultyDescription: {
     fontSize: 12,
@@ -542,7 +542,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   saveButton: {
-    backgroundColor: '#4CAF50',
+    backgroundColor: '#FE7648',
     marginLeft: 10,
   },
   saveButtonText: {

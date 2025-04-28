@@ -146,7 +146,7 @@ export default function ProgressScreen({ navigation }) {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#4CAF50" />
+        <ActivityIndicator size="large" color="#FE7648" />
         <Text style={styles.loadingText}>Loading your progress data...</Text>
       </View>
     );
@@ -301,7 +301,7 @@ const styles = StyleSheet.create({
     color: '#333',
   },
   header: {
-    backgroundColor: '#4CAF50',
+    backgroundColor: '#FE7648',
     padding: 20,
     alignItems: 'center',
   },
@@ -340,7 +340,7 @@ const styles = StyleSheet.create({
   statValue: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#4CAF50',
+    color: '#FE7648',
   },
   statLabel: {
     fontSize: 14,
@@ -437,7 +437,7 @@ const styles = StyleSheet.create({
   subjectStatValue: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#4CAF50',
+    color: '#FE7648',
   },
   subjectStatLabel: {
     fontSize: 12,

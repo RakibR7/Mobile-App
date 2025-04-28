@@ -127,7 +127,7 @@ export default function SubtopicProgressScreen({ route, navigation }) {
       case 2: return '#FF9800'; // Orange
       case 3: return '#FFEB3B'; // Yellow
       case 4: return '#8BC34A'; // Light Green
-      case 5: return '#4CAF50'; // Green
+      case 5: return '#FE7648'; // Green
       default: return '#9E9E9E';
     }
   };
@@ -142,7 +142,7 @@ export default function SubtopicProgressScreen({ route, navigation }) {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#4CAF50" />
+        <ActivityIndicator size="large" color="#FE7648" />
         <Text style={styles.loadingText}>Loading progress data...</Text>
       </View>
     );
@@ -316,7 +316,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   header: {
-    backgroundColor: '#4CAF50',
+    backgroundColor: '#FE7648',
     padding: 15,
     alignItems: 'center',
   },
@@ -429,7 +429,7 @@ const styles = StyleSheet.create({
   statValue: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#4CAF50',
+    color: '#FE7648',
   },
   statLabel: {
     fontSize: 12,
@@ -458,7 +458,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   emptyButton: {
-    backgroundColor: '#4CAF50',
+    backgroundColor: '#FE7648',
     paddingVertical: 10,
     paddingHorizontal: 20,
     borderRadius: 8,

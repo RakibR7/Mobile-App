@@ -170,7 +170,7 @@ const styles = StyleSheet.create({
   highlightedTopic: {
     backgroundColor: 'rgba(76, 175, 80, 0.2)',
     borderWidth: 2,
-    borderColor: '#4CAF50',
+    borderColor: '#FE7648',
   },
   topicHeader: {
     flexDirection: 'row',

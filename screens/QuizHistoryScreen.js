@@ -173,7 +173,7 @@ export default function QuizHistoryScreen({ route, navigation }) {
   };
 
   const getScoreColor = (percentage) => {
-    if (percentage >= 80) return '#4CAF50'; // Green
+    if (percentage >= 80) return '#FE7648'; // Green
     if (percentage >= 60) return '#FF9800'; // Orange
     return '#F44336'; // Red
   };
@@ -191,7 +191,7 @@ export default function QuizHistoryScreen({ route, navigation }) {
   if (loading && !refreshing) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#4CAF50" />
+        <ActivityIndicator size="large" color="#FE7648" />
         <Text style={styles.loadingText}>Loading quiz history...</Text>
       </View>
     );
@@ -204,8 +204,8 @@ export default function QuizHistoryScreen({ route, navigation }) {
         <RefreshControl
           refreshing={refreshing}
           onRefresh={onRefresh}
-          colors={['#4CAF50']}
-          tintColor="#4CAF50"
+          colors={['#FE7648']}
+          tintColor="#FE7648"
         />
       }
     >
@@ -442,7 +442,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   retryButton: {
-    backgroundColor: '#4CAF50',
+    backgroundColor: '#FE7648',
     paddingVertical: 8,
     paddingHorizontal: 15,
     borderRadius: 5,
@@ -500,7 +500,7 @@ const styles = StyleSheet.create({
   statValue: {
     fontSize: 22,
     fontWeight: 'bold',
-    color: '#4CAF50',
+    color: '#FE7648',
   },
   statLabel: {
     fontSize: 14,
@@ -579,7 +579,7 @@ const styles = StyleSheet.create({
   sessionStatValue: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#4CAF50',
+    color: '#FE7648',
   },
   sessionStatLabel: {
     fontSize: 12,
@@ -603,7 +603,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   practiceButton: {
-    backgroundColor: '#4CAF50',
+    backgroundColor: '#FE7648',
     paddingVertical: 12,
     paddingHorizontal: 20,
     borderRadius: 5,

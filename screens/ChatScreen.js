@@ -283,7 +283,7 @@ const styles = StyleSheet.create({
     padding: 10,
   },
   newConvoButton: {
-    backgroundColor: '#4caf50',
+    backgroundColor: '#FE7648',
     padding: 10,
     borderRadius: 5,
     flex: 1,
@@ -386,7 +386,7 @@ const styles = StyleSheet.create({
     maxHeight: 100,
   },
   sendButton: {
-    backgroundColor: '#4caf50',
+    backgroundColor: '#FE7648',
     paddingHorizontal: 15,
     paddingVertical: 10,
     marginLeft: 10,

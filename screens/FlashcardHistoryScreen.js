@@ -199,7 +199,7 @@ export default function FlashcardHistoryScreen({ route, navigation }) {
   if (loading && !refreshing) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#4CAF50" />
+        <ActivityIndicator size="large" color="#FE7648" />
         <Text style={styles.loadingText}>Loading history data...</Text>
       </View>
     );
@@ -212,8 +212,8 @@ export default function FlashcardHistoryScreen({ route, navigation }) {
         <RefreshControl
           refreshing={refreshing}
           onRefresh={onRefresh}
-          colors={['#4CAF50']}
-          tintColor="#4CAF50"
+          colors={['#FE7648']}
+          tintColor="#FE7648"
         />
       }
     >
@@ -389,7 +389,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   retryButton: {
-    backgroundColor: '#4CAF50',
+    backgroundColor: '#FE7648',
     paddingVertical: 8,
     paddingHorizontal: 15,
     borderRadius: 5,
@@ -447,7 +447,7 @@ const styles = StyleSheet.create({
   statValue: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#4CAF50',
+    color: '#FE7648',
   },
   statLabel: {
     fontSize: 14,
@@ -492,14 +492,14 @@ const styles = StyleSheet.create({
   sessionStatValue: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#4CAF50',
+    color: '#FE7648',
   },
   sessionStatLabel: {
     fontSize: 12,
     color: '#666',
   },
   button: {
-    backgroundColor: '#4CAF50',
+    backgroundColor: '#FE7648',
     paddingVertical: 12,
     paddingHorizontal: 20,
     borderRadius: 5,

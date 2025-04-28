@@ -155,13 +155,13 @@ const styles = StyleSheet.create({
   logoText: {
     fontSize: 36,
     fontWeight: 'bold',
-    color: '#4CAF50',
+    color: '#FE7648',
     marginBottom: 20,
   },
   title: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#4CAF50',
+    color: '#FE7648',
     marginBottom: 10,
   },
   subtitle: {
@@ -207,11 +207,11 @@ const styles = StyleSheet.create({
     marginBottom: 15,
   },
   forgotPasswordText: {
-    color: '#4CAF50',
+    color: '#FE7648',
     fontSize: 14,
   },
   signInButton: {
-    backgroundColor: '#4CAF50',
+    backgroundColor: '#FE7648',
     height: 50,
     borderRadius: 8,
     justifyContent: 'center',
@@ -232,7 +232,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   signUpLink: {
-    color: '#4CAF50',
+    color: '#FE7648',
     fontSize: 14,
     fontWeight: '600',
     marginLeft: 5,

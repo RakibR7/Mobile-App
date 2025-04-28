@@ -620,7 +620,7 @@ export default function DynamicExerciseScreen({ route, navigation }) {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#4CAF50" />
+        <ActivityIndicator size="large" color="#FE7648" />
         <Text style={styles.loadingText}>
           {showQuizOptions ? "Loading quiz options..." : "Generating questions..."}
         </Text>
@@ -743,7 +743,7 @@ export default function DynamicExerciseScreen({ route, navigation }) {
 
         {submitting && (
           <View style={styles.submittingContainer}>
-            <ActivityIndicator size="small" color="#4CAF50" />
+            <ActivityIndicator size="small" color="#FE7648" />
             <Text style={styles.submittingText}>Evaluating your answer...</Text>
           </View>
         )}
@@ -860,7 +860,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   optionButton: {
-    backgroundColor: '#4CAF50',
+    backgroundColor: '#FE7648',
     borderRadius: 10,
     padding: 20,
     marginBottom: 20,
@@ -868,7 +868,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   disabledButton: {
-    backgroundColor: '#A5D6A7',
+    backgroundColor: '#FF9B7A',
   },
   optionButtonText: {
     color: '#FFFFFF',
@@ -896,7 +896,7 @@ const styles = StyleSheet.create({
   },
   statsText: {
     fontWeight: 'bold',
-    color: '#4CAF50',
+    color: '#FE7648',
     marginBottom: 5,
   },
   statsDetail: {
@@ -923,7 +923,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   easyBadge: {
-    backgroundColor: '#4CAF50',
+    backgroundColor: '#FE7648',
   },
   normalBadge: {
     backgroundColor: '#2196F3',
@@ -970,7 +970,7 @@ const styles = StyleSheet.create({
   },
   correctFeedback: {
     backgroundColor: '#e8f5e9',
-    borderColor: '#4CAF50',
+    borderColor: '#FE7648',
     borderWidth: 1,
   },
   incorrectFeedback: {
@@ -992,7 +992,7 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   submitButton: {
-    backgroundColor: '#4CAF50',
+    backgroundColor: '#FE7648',
     padding: 15,
     borderRadius: 8,
     alignItems: 'center',

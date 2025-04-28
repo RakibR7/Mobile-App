@@ -133,7 +133,7 @@ const styles = StyleSheet.create({
   },
   backIcon: {
     fontSize: 16,
-    color: '#4CAF50',
+    color: '#FE7648',
   },
   title: {
     fontSize: 24,
@@ -180,7 +180,7 @@ const styles = StyleSheet.create({
     marginTop: 5,
   },
   resetButton: {
-    backgroundColor: '#4CAF50',
+    backgroundColor: '#FE7648',
     height: 50,
     borderRadius: 8,
     justifyContent: 'center',
@@ -204,7 +204,7 @@ const styles = StyleSheet.create({
   successTitle: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#4CAF50',
+    color: '#FE7648',
     marginBottom: 10,
   },
   successText: {
@@ -215,7 +215,7 @@ const styles = StyleSheet.create({
     lineHeight: 22,
   },
   backButton: {
-    backgroundColor: '#4CAF50',
+    backgroundColor: '#FE7648',
     paddingVertical: 12,
     paddingHorizontal: 20,
     borderRadius: 8,

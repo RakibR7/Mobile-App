@@ -89,8 +89,8 @@ export default function SubjectTutorScreen({ navigation }) {
         <RefreshControl
           refreshing={refreshing}
           onRefresh={onRefresh}
-          colors={['#4CAF50']}
-          tintColor="#4CAF50"
+          colors={['#FE7648']}
+          tintColor="#FE7648"
         />
       }
     >
@@ -210,7 +210,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   chatButton: {
-    backgroundColor: '#4CAF50',
+    backgroundColor: '#FE7648',
     width: '48%',
   },
   exerciseButton: {

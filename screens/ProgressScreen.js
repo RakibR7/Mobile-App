@@ -152,7 +152,7 @@ export default function ProgressScreen({ navigation }) {
     );
   }
 
-  // Get subjects from performance data
+
   const subjects = [...new Set([
     ...performanceData.flashcards.map(item => item.tutor),
     ...performanceData.quizzes.map(item => item.tutor)
@@ -259,7 +259,6 @@ export default function ProgressScreen({ navigation }) {
                     <Text style={styles.subjectStatLabel}>Flashcard Sets</Text>
                   </TouchableOpacity>
 
-// screens/ProgressScreen.js (continued)
                   <TouchableOpacity
                     style={styles.subjectStat}
                     onPress={() => navigateToActivityHistory('quiz', subject)}

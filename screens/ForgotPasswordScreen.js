@@ -1,4 +1,3 @@
-// screens/ForgotPasswordScreen.js
 import React, { useState } from 'react';
 import {
   View,
@@ -22,8 +21,6 @@ const ForgotPasswordScreen = ({ navigation }) => {
 
   const validateForm = () => {
     const newErrors = {};
-
-    // Validate email
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!email.trim()) {
       newErrors.email = 'Email is required';

@@ -197,7 +197,6 @@ export default function DynamicExerciseScreen({ route, navigation }) {
 
       let parsedQuestions
       try {
-        // Try different parsing strategies
         if (typeof data.response === 'string') {
           const jsonMatch = data.response.match(/\[\s*\{.*\}\s*\]/s)
           if (jsonMatch) {
@@ -213,7 +212,6 @@ export default function DynamicExerciseScreen({ route, navigation }) {
           throw new Error("Unexpected response format")
         }
 
-        // Add difficulty property
         parsedQuestions = parsedQuestions.map((q, idx) => ({
           ...q,
           difficulty: difficulty
@@ -221,7 +219,6 @@ export default function DynamicExerciseScreen({ route, navigation }) {
       } catch (parseError) {
         console.error('Error parsing questions:', parseError)
 
-        // Use default questions as fallback, but adjust for difficulty
         let fallbackQuestions
         if (tutor === 'biology' && topic === 'cells') {
           fallbackQuestions = getCellsQuestions()
@@ -229,7 +226,6 @@ export default function DynamicExerciseScreen({ route, navigation }) {
           fallbackQuestions = getDefaultQuestions(topicName, tutor)
         }
 
-        // Modify questions based on difficulty
         fallbackQuestions = fallbackQuestions.map(q => {
           let modifiedQuestion = q.question
 

@@ -178,21 +178,17 @@ export const getPerformanceData = async (userId, tutor, topic, activityType) => 
     const result = await response.json();
     console.log(`Found ${result.length} ${activityType || ''} history records`);
 
-    // If we got an empty result but didn't specify a topic, no need to try again
     if (result.length === 0 && topic) {
       console.log('No records found with specific topic, trying broader search...');
-      // Try again without topic filter
       return await getPerformanceData(userId, tutor, null, activityType);
     }
 
-    // Analyze the results to help debugging
     if (Array.isArray(result) && result.length > 0) {
       const sessionsCount = result.reduce((sum, item) =>
         sum + (item.sessions?.length || 0), 0);
 
       const cardsCount = result.reduce((sum, item) =>
         sum + (item.cards?.length || 0), 0);
-
       console.log(`Results contain ${sessionsCount} sessions and ${cardsCount} cards`);
     }
 
@@ -228,32 +224,26 @@ let performanceUpdateQueue = [];
 let isProcessingQueue = false;
 
 export const updatePerformanceData = async (performanceData) => {
-  // Make sure userId exists
   if (!performanceData.userId) {
     console.error('updatePerformanceData called without userId in data');
     return null;
   }
 
-  // Add to queue
   performanceUpdateQueue.push(performanceData);
 
-  // If already processing, just return
   if (isProcessingQueue) return null;
 
-  // Process queue
   isProcessingQueue = true;
 
   while (performanceUpdateQueue.length > 0) {
     const currentData = performanceUpdateQueue[0];
     try {
-      // Ensure all numeric values are numbers, not strings
       if (currentData.sessionData) {
         currentData.sessionData.cardsStudied = Number(currentData.sessionData.cardsStudied || 0);
         currentData.sessionData.correctAnswers = Number(currentData.sessionData.correctAnswers || 0);
         currentData.sessionData.timeSpent = Number(currentData.sessionData.timeSpent || 0);
       }
 
-      // Also normalize the sessions array if present
       if (currentData.sessions && Array.isArray(currentData.sessions)) {
         currentData.sessions.forEach(session => {
           session.cardsStudied = Number(session.cardsStudied || 0);
@@ -281,7 +271,7 @@ export const updatePerformanceData = async (performanceData) => {
             body: JSON.stringify(currentData)
           },
           8000
-        );
+        )
 
         if (!response.ok) {
           console.error(`Failed to update performance data: ${response.status}`);
@@ -291,25 +281,18 @@ export const updatePerformanceData = async (performanceData) => {
         }
       } catch (fetchError) {
         console.error("Fetch error during performance update:", fetchError);
-        // Keep in queue if it's a network issue
         if (fetchError.name === 'TypeError' || fetchError.name === 'AbortError') {
-          // For network errors, stop processing for now and retry later
           isProcessingQueue = false;
           return null;
         }
       }
 
-      // Remove processed item
       performanceUpdateQueue.shift();
     } catch (error) {
       console.error("Error updating performance data:", error);
-
-      // For network errors, we'll keep in queue for retry later
       if (error.name !== 'TypeError') {
-        // For other errors, remove from queue to prevent infinite retries
         performanceUpdateQueue.shift();
       } else {
-        // For network errors, stop processing for now
         break;
       }
     }

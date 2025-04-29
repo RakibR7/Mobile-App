@@ -1,8 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import {
-  View, Text, StyleSheet, TouchableOpacity, FlatList,
-  ActivityIndicator, ScrollView, RefreshControl, Alert
-} from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, FlatList, ActivityIndicator, ScrollView, RefreshControl, Alert } from 'react-native';
 import { useUser } from '../context/UserContext';
 import { getPerformanceData } from '../services/apiService';
 

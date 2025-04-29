@@ -30,7 +30,7 @@ const ForgotPasswordScreen = ({ navigation }) => {
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
-  };
+  }
 
   const handleResetPassword = async () => {
     if (!validateForm()) return;
@@ -41,7 +41,7 @@ const ForgotPasswordScreen = ({ navigation }) => {
     } catch (error) {
       Alert.alert('Error', error.message);
     }
-  };
+  }
 
   if (isSubmitted) {
     return (
@@ -60,14 +60,13 @@ const ForgotPasswordScreen = ({ navigation }) => {
           </TouchableOpacity>
         </View>
       </View>
-    );
+    )
   }
 
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={styles.container}
-    >
+      style={styles.container}>
       <View style={styles.contentContainer}>
         <View style={styles.headerContainer}>
           <TouchableOpacity
@@ -99,8 +98,7 @@ const ForgotPasswordScreen = ({ navigation }) => {
           <TouchableOpacity
             style={styles.resetButton}
             onPress={handleResetPassword}
-            disabled={loading}
-          >
+            disabled={loading}>
             {loading ? (
               <ActivityIndicator color="#FFFFFF" size="small" />
             ) : (

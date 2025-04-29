@@ -63,7 +63,7 @@ export default function ChatScreen({ route, navigation }) {
       model: selectedModel,
       tutor: tutor,
       conversationId: activeConversationId
-    };
+    }
 
     setIsLoading(true);
     setMessages(prev => [...prev, userMessage]);
@@ -73,7 +73,7 @@ export default function ChatScreen({ route, navigation }) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(userMessage)
-      });
+      })
 
       const aiResponseData = await fetch("https://api.teachmetutor.academy/api/openai", {
         method: "POST",
@@ -83,7 +83,7 @@ export default function ChatScreen({ route, navigation }) {
           model: selectedModel,
           tutor
         })
-      });
+      })
 
       const aiData = await aiResponseData.json();
       const aiMessage = {
@@ -92,13 +92,13 @@ export default function ChatScreen({ route, navigation }) {
         model: selectedModel,
         tutor: tutor,
         conversationId: activeConversationId
-      };
+      }
 
       await fetch("https://api.teachmetutor.academy/api/messages", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(aiMessage)
-      });
+      })
       setMessages(prev => [...prev, aiMessage]);
       fetchConversations();
     } catch (error) {
@@ -107,7 +107,7 @@ export default function ChatScreen({ route, navigation }) {
       setIsLoading(false);
       setUserInput("");
     }
-  };
+  }
 
   const handleNewConversation = async () => {
     try {
@@ -119,7 +119,7 @@ export default function ChatScreen({ route, navigation }) {
           model: selectedModel,
           tutor
         })
-      });
+      })
 
       const newConversation = await response.json();
       setConversations([newConversation, ...conversations]);
@@ -196,7 +196,7 @@ export default function ChatScreen({ route, navigation }) {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.content}>
-        {/* Sidebar - only shown when showSidebar is true */}
+        {}
         {showSidebar && (
           <View style={styles.sidebar}>
             <View style={styles.sidebarHeader}>

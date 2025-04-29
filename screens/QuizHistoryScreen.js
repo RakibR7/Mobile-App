@@ -45,7 +45,6 @@ export default function QuizHistoryScreen({ route, navigation }) {
     setLoading(true);
     setError(null);
 
-    // Store debug information
     const requestParams = {
       userId,
       tutor,
@@ -55,42 +54,37 @@ export default function QuizHistoryScreen({ route, navigation }) {
     setDebugInfo(prev => ({ ...prev, requestParams }));
 
     try {
-      // Try with regular topic parameter
       let data = await getPerformanceData(
         userId,
         tutor,
         topic,
         'quiz'
-      );
+      )
 
       console.log(`Found ${data?.length || 0} quiz history records with specific topic`);
 
-      // If we get no results, try with a more general search without the topic
+      //If we get no results, try with a more general search without the topic
       if (!data || data.length === 0) {
         console.log('No records found with specific topic, trying broader search');
         data = await getPerformanceData(
           userId,
           tutor,
-          null, // Try without topic filter
+          null,
           'quiz'
-        );
+        )
         console.log(`Found ${data?.length || 0} quiz history records with broader search`);
       }
 
-      // Store response data for debugging
       setDebugInfo(prev => ({ ...prev, responseData: data }));
 
       if (!Array.isArray(data)) {
         throw new Error("Invalid data format received from server");
       }
 
-      // Filter results client-side if we have topic information
       let filteredData = data;
       if (topic && data.length > 0) {
-        // We might need to match topics in different formats
         const normalizedTopic = topic.toLowerCase();
         filteredData = data.filter(session => {
-          // Check in multiple possible locations/formats
           const sessionTopic = (session.topic || '').toLowerCase();
           const sessionSubtopic = (session.subtopic || '').toLowerCase();
 
@@ -105,7 +99,6 @@ export default function QuizHistoryScreen({ route, navigation }) {
 
       setSessions(filteredData);
 
-      // Calculate overall stats
       let totalQuestions = 0;
       let totalCorrect = 0;
       let totalTime = 0;
@@ -115,19 +108,17 @@ export default function QuizHistoryScreen({ route, navigation }) {
         totalQuizzes++;
 
         if (session.sessionData) {
-          // Direct sessionData format
           totalQuestions += session.sessionData.cardsStudied || 0;
           totalCorrect += session.sessionData.correctAnswers || 0;
           totalTime += session.sessionData.timeSpent || 0;
         } else if (session.sessions && Array.isArray(session.sessions)) {
-          // Nested sessions format
           session.sessions.forEach(s => {
             totalQuestions += s.cardsStudied || 0;
             totalCorrect += s.correctAnswers || 0;
             totalTime += s.timeSpent || 0;
-          });
+          })
         }
-      });
+      })
 
       setStats({
         totalQuizzes,
@@ -136,7 +127,7 @@ export default function QuizHistoryScreen({ route, navigation }) {
         accuracy: totalQuestions > 0 ? Math.round((totalCorrect / totalQuestions) * 100) : 0,
         totalTime,
         averageScore: totalQuizzes > 0 ? Math.round(totalCorrect / totalQuizzes) : 0
-      });
+      })
 
     } catch (error) {
       console.error('Error fetching quiz history:', error);
@@ -146,12 +137,12 @@ export default function QuizHistoryScreen({ route, navigation }) {
       setLoading(false);
       setRefreshing(false);
     }
-  };
+  }
 
   const onRefresh = () => {
     setRefreshing(true);
     fetchHistory();
-  };
+  }
 
   const formatTime = (seconds) => {
     if (!seconds || isNaN(seconds)) return '0m 0s';
@@ -159,7 +150,7 @@ export default function QuizHistoryScreen({ route, navigation }) {
     const minutes = Math.floor(seconds / 60);
     const remainingSeconds = Math.floor(seconds % 60);
     return `${minutes}m ${remainingSeconds}s`;
-  };
+  }
 
   const formatDate = (dateString) => {
     if (!dateString) return 'Unknown date';
@@ -170,13 +161,13 @@ export default function QuizHistoryScreen({ route, navigation }) {
     } catch (e) {
       return 'Invalid date';
     }
-  };
+  }
 
   const getScoreColor = (percentage) => {
-    if (percentage >= 80) return '#FE7648'; // Green
-    if (percentage >= 60) return '#FF9800'; // Orange
-    return '#F44336'; // Red
-  };
+    if (percentage >= 80) return '#FE7648';
+    if (percentage >= 60) return '#FF9800';
+    return '#F44336';
+  }
 
   const showDebugInfo = () => {
     Alert.alert(
@@ -194,7 +185,7 @@ export default function QuizHistoryScreen({ route, navigation }) {
         <ActivityIndicator size="large" color="#FE7648" />
         <Text style={styles.loadingText}>Loading quiz history...</Text>
       </View>
-    );
+    )
   }
 
   return (
@@ -205,10 +196,8 @@ export default function QuizHistoryScreen({ route, navigation }) {
           refreshing={refreshing}
           onRefresh={onRefresh}
           colors={['#FE7648']}
-          tintColor="#FE7648"
-        />
-      }
-    >
+          tintColor="#FE7648"/>
+      }>
       <View style={styles.headerRow}>
         <Text style={styles.title}>Quiz History</Text>
         <TouchableOpacity onPress={showDebugInfo} style={styles.debugButton}>
@@ -282,19 +271,15 @@ export default function QuizHistoryScreen({ route, navigation }) {
           <Text style={styles.sectionTitle}>Quiz Sessions</Text>
 
           {sessions.map((item, index) => {
-            // Calculate session stats
             let sessionQuestions = 0;
             let sessionCorrect = 0;
             let sessionTime = 0;
 
-            // Handle different data formats
             if (item.sessionData) {
-              // Direct format
               sessionQuestions = item.sessionData.cardsStudied || 0;
               sessionCorrect = item.sessionData.correctAnswers || 0;
               sessionTime = item.sessionData.timeSpent || 0;
             } else if (item.sessions && Array.isArray(item.sessions) && item.sessions.length > 0) {
-              // Nested sessions format
               item.sessions.forEach(s => {
                 sessionQuestions += s.cardsStudied || 0;
                 sessionCorrect += s.correctAnswers || 0;

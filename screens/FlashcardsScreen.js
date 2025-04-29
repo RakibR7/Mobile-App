@@ -1,4 +1,3 @@
-// screens/FlashcardsScreen.js
 import React, { useState, useRef, useEffect } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, Animated,
@@ -11,7 +10,6 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 const { width } = Dimensions.get('window');
 const CARD_WIDTH = width * 0.85;
 
-// Fallback flashcards if API fails
 const getDefaultFlashcards = (topic, tutor) => {
   return [
     {
@@ -38,10 +36,10 @@ const getDefaultFlashcards = (topic, tutor) => {
       correct: 0,
       lastResult: null
     }
-  ];
-};
+  ]
+}
 
-// Get specific defaultcards for biology topics
+//Get specific defaultcards for biology topics
 const getBiologyFlashcards = (topic) => {
   if (topic === "cells") {
     return [
@@ -85,10 +83,10 @@ const getBiologyFlashcards = (topic) => {
         correct: 0,
         lastResult: null
       }
-    ];
+    ]
   }
   return getDefaultFlashcards(topic, "biology");
-};
+}
 
 export default function FlashcardsScreen({ route, navigation }) {
   const { tutor, topic, topicName } = route.params;
@@ -107,44 +105,44 @@ export default function FlashcardsScreen({ route, navigation }) {
     correctAnswers: 0,
     incorrectAnswers: 0,
     timeSpent: 0
-  });
+  })
 
   const flipAnimation = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    // Fetch saved flashcards on mount
+    //Fetch saved flashcards on mount
     fetchSavedFlashcards();
     setSessionStartTime(Date.now());
 
-    // Cleanup when leaving the screen
+    //Cleanup when leaving the screen
     return () => {
       if (flashcards.length > 0 && sessionStats.cardsStudied > 0) {
         saveSession();
       }
-    };
-  }, []);
+    }
+  }, [])
 
   const fetchSavedFlashcards = async () => {
     try {
       setLoading(true);
       setNetworkError(false);
 
-      // Get previously studied flashcards from the performance data
+      //Get previously studied flashcards from the performance data
       if (userId) {
         try {
           console.log(`Fetching flashcards for user: ${userId}, tutor: ${tutor}, topic: ${topic || topicName}`);
 
-          // First try to get data for the specific topic/subtopic
+          //First try to get data for the specific topic/subtopic
           const performanceData = await getPerformanceData(
             userId,
             tutor,
-            null, // Change from topicName to null to get all topics for the tutor
+            null, //Change from topicName to null to get all topics for the tutor
             'flashcard'
           );
 
           console.log(`Retrieved ${performanceData?.length || 0} flashcard sessions`);
 
-          // Extract unique flashcards from the performance data
+          //Extract unique flashcards from the performance data
           const savedCards = [];
           const uniqueQuestions = new Set();
 
@@ -152,10 +150,8 @@ export default function FlashcardsScreen({ route, navigation }) {
             performanceData.forEach(session => {
               console.log(`Session has ${session.cards?.length || 0} cards`);
 
-              // Look for cards in "cards" array
               if (session.cards && Array.isArray(session.cards) && session.cards.length > 0) {
                 session.cards.forEach(card => {
-                  // Don't filter by subtopic initially to debug
                   if (!uniqueQuestions.has(card.question)) {
                     uniqueQuestions.add(card.question);
                     savedCards.push({
@@ -165,16 +161,15 @@ export default function FlashcardsScreen({ route, navigation }) {
                       attempts: card.attempts || 0,
                       correct: card.correctAttempts || 0,
                       lastResult: null
-                    });
+                    })
                   }
-                });
+                })
               }
-            });
+            })
           }
 
           console.log(`Extracted ${savedCards.length} unique flashcards`);
 
-          // If no cards found, try using default cards as a fallback
           if (savedCards.length === 0) {
             console.log('No saved flashcards found, using defaults as fallback');
             let fallbackCards;
@@ -191,7 +186,6 @@ export default function FlashcardsScreen({ route, navigation }) {
         } catch (error) {
           console.error('Error fetching performance data:', error);
 
-          // Use default cards on error
           let fallbackCards;
           if (tutor === 'biology' && topic === 'cells') {
             fallbackCards = getBiologyFlashcards(topic);
@@ -204,21 +198,19 @@ export default function FlashcardsScreen({ route, navigation }) {
       }
     } catch (error) {
       console.error('Error in fetchSavedFlashcards:', error);
-      // Set some default cards on any error
       let fallbackCards = getDefaultFlashcards(topicName, tutor);
       setSavedFlashcards(fallbackCards);
     } finally {
       setLoading(false);
     }
-  };
+  }
 
   const generateFlashcards = async () => {
     setLoading(true);
     setNetworkError(false);
 
     try {
-      // Get the user's preferred difficulty level
-      let difficulty = 'normal'; // Default
+      let difficulty = 'normal';
       try {
         const savedDifficulty = await AsyncStorage.getItem('questionDifficulty');
         if (savedDifficulty) {
@@ -228,17 +220,14 @@ export default function FlashcardsScreen({ route, navigation }) {
         console.log('Could not load difficulty setting:', error);
       }
 
-      // Get the appropriate model based on tutor
       const tutorModel = {
         biology: 'ft:gpt-3.5-turbo-0125:personal:csp-biology-finetuning-data10-20000:BJN7IqeS',
         python: 'ft:gpt-3.5-turbo-0125:personal:dr1-csv6-shortened-3381:B0DlvD7p'
       }[tutor] || 'gpt-3.5-turbo';
 
-      // Generate flashcards using AI with difficulty adjustment
       const uniqueId = Math.random().toString(36).substring(2, 8);
       const timestamp = new Date().toISOString();
 
-      // Craft a difficulty-specific prompt
       let difficultyGuide = '';
       if (difficulty === 'easy') {
         difficultyGuide = 'Make these beginner-friendly with clear explanations and basic concepts. Focus on foundational knowledge that new learners need to understand.';
@@ -262,11 +251,11 @@ export default function FlashcardsScreen({ route, navigation }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           message: prompt,
-          model: tutorModel, // Use the subject-specific model
+          model: tutorModel,
           tutor
         }),
         timeout: 15000
-      });
+      })
 
       if (!response.ok) {
         throw new Error(`Server responded with status ${response.status}`);
@@ -274,10 +263,8 @@ export default function FlashcardsScreen({ route, navigation }) {
 
       const data = await response.json();
 
-      // Parse the AI response to extract the flashcards
       let parsedFlashcards;
       try {
-        // Try different parsing strategies
         if (typeof data.response === 'string') {
           const jsonMatch = data.response.match(/\[\s*\{.*\}\s*\]/s);
           if (jsonMatch) {
@@ -293,21 +280,19 @@ export default function FlashcardsScreen({ route, navigation }) {
           throw new Error("Unexpected response format");
         }
 
-        // Add tracking properties to each card
         parsedFlashcards = parsedFlashcards.map((card, index) => ({
           id: card.id || index + 1,
           question: card.question,
           answer: card.answer,
-          difficulty: difficulty, // Save the difficulty level
+          difficulty: difficulty,
           attempts: 0,
           correct: 0,
           lastResult: null
-        }));
+        }))
 
       } catch (parseError) {
         console.error('Error parsing flashcards:', parseError);
 
-        // Use default flashcards as fallback, but adjust them based on difficulty
         let fallbackCards;
         if (tutor === 'biology' && topic === 'cells') {
           fallbackCards = getBiologyFlashcards(topic);
@@ -315,7 +300,6 @@ export default function FlashcardsScreen({ route, navigation }) {
           fallbackCards = getDefaultFlashcards(topicName, tutor);
         }
 
-        // Modify questions based on difficulty
         fallbackCards = fallbackCards.map(card => {
           let modifiedQuestion = card.question;
           let modifiedAnswer = card.answer;
@@ -336,10 +320,9 @@ export default function FlashcardsScreen({ route, navigation }) {
             attempts: 0,
             correct: 0,
             lastResult: null
-          };
-        });
+          }
+        })
 
-        // Randomize the order
         parsedFlashcards = fallbackCards.sort(() => Math.random() - 0.5);
       }
 
@@ -351,13 +334,12 @@ export default function FlashcardsScreen({ route, navigation }) {
         correctAnswers: 0,
         incorrectAnswers: 0,
         timeSpent: 0
-      });
+      })
       setSessionStartTime(Date.now());
     } catch (error) {
       console.error('Error generating flashcards:', error);
       setNetworkError(true);
 
-      // Try to get the saved difficulty
       let difficulty = 'normal';
       try {
         const savedDifficulty = await AsyncStorage.getItem('questionDifficulty');
@@ -368,7 +350,6 @@ export default function FlashcardsScreen({ route, navigation }) {
         console.log('Could not load difficulty setting on error:', err);
       }
 
-      // Use default flashcards with randomization as a fallback
       let fallbackCards;
       if (tutor === 'biology' && topic === 'cells') {
         fallbackCards = getBiologyFlashcards(topic);
@@ -376,7 +357,6 @@ export default function FlashcardsScreen({ route, navigation }) {
         fallbackCards = getDefaultFlashcards(topicName, tutor);
       }
 
-      // Modify based on difficulty
       fallbackCards = fallbackCards.map(card => {
         let modifiedQuestion = card.question;
         let modifiedAnswer = card.answer;
@@ -397,7 +377,7 @@ export default function FlashcardsScreen({ route, navigation }) {
           attempts: 0,
           correct: 0,
           lastResult: null
-        };
+        }
       }).sort(() => Math.random() - 0.5);
 
       setFlashcards(fallbackCards);
@@ -408,12 +388,12 @@ export default function FlashcardsScreen({ route, navigation }) {
         correctAnswers: 0,
         incorrectAnswers: 0,
         timeSpent: 0
-      });
+      })
       setSessionStartTime(Date.now());
     } finally {
       setLoading(false);
     }
-  };
+  }
 
   const saveSession = async () => {
     if (sessionStats.cardsStudied === 0 || !userId) return;
@@ -421,30 +401,27 @@ export default function FlashcardsScreen({ route, navigation }) {
     try {
       const timeSpent = Math.floor((Date.now() - sessionStartTime) / 1000);
 
-      // Prepare cards data with subtopic
       const cardsData = flashcards.map(card => {
-        // Only include cards that were studied this session
         if (card.lastResult !== null) {
           return {
             cardId: card.id.toString(),
             question: card.question,
             answer: card.answer,
-            subtopic: topic || 'general', // Use topic as subtopic
-            difficulty: card.difficulty || 'normal', // Include difficulty
+            subtopic: topic || 'general',
+            difficulty: card.difficulty || 'normal',
             attempts: card.attempts || 0,
             correctAttempts: card.correct || 0
-          };
+          }
         }
         return null;
-      }).filter(Boolean); // Remove null entries
+      }).filter(Boolean);
 
-      // Prepare session data - ensure these are always numbers
       const sessionData = {
         cardsStudied: sessionStats.cardsStudied,
         correctAnswers: sessionStats.correctAnswers,
         timeSpent,
-        subtopic: topic || 'general' // Use topic as subtopic
-      };
+        subtopic: topic || 'general'
+      }
 
       console.log("Saving flashcard performance:", {
         userId,
@@ -454,9 +431,8 @@ export default function FlashcardsScreen({ route, navigation }) {
         activityType: 'flashcard',
         sessionData,
         cardsData: cardsData.length
-      });
+      })
 
-      // Send data to server
       const response = await updatePerformanceData({
         userId,
         tutor,
@@ -464,9 +440,9 @@ export default function FlashcardsScreen({ route, navigation }) {
         subtopic: topic || 'general',
         activityType: 'flashcard',
         sessionData,
-        sessions: [sessionData], // Add sessions array with the same data
-        cards: cardsData // Change from cardsData to cards for consistency
-      });
+        sessions: [sessionData],
+        cards: cardsData
+      })
 
       if (response) {
         console.log("Flashcard session saved successfully, response:", response);
@@ -476,9 +452,8 @@ export default function FlashcardsScreen({ route, navigation }) {
 
     } catch (error) {
       console.error('Error saving session data:', error);
-      // Don't show errors to user for this process
     }
-  };
+  }
 
   const startRevision = () => {
     if (savedFlashcards.length === 0) {
@@ -507,9 +482,9 @@ export default function FlashcardsScreen({ route, navigation }) {
       correctAnswers: 0,
       incorrectAnswers: 0,
       timeSpent: 0
-    });
+    })
     setSessionStartTime(Date.now());
-  };
+  }
 
   const flipCard = () => {
     if (showAnswer) {
@@ -525,16 +500,14 @@ export default function FlashcardsScreen({ route, navigation }) {
         useNativeDriver: true,
       }).start(() => setShowAnswer(true));
     }
-  };
+  }
 
   const markCardResult = (isCorrect) => {
-    // Only count if card was viewed (answer shown)
     if (!showAnswer) {
       Alert.alert("Reminder", "Please flip the card and view the answer before marking your result.");
       return;
     }
 
-    // Update the current flashcard
     const updatedFlashcards = [...flashcards];
     const currentCard = updatedFlashcards[currentIndex];
 
@@ -546,7 +519,6 @@ export default function FlashcardsScreen({ route, navigation }) {
       currentCard.lastResult = false;
     }
 
-    // Update session stats
     setSessionStats(prev => ({
       ...prev,
       cardsStudied: prev.cardsStudied + 1,
@@ -556,15 +528,12 @@ export default function FlashcardsScreen({ route, navigation }) {
 
     setFlashcards(updatedFlashcards);
 
-    // Move to next card automatically
     if (showAnswer) {
       setShowAnswer(false);
       flipAnimation.setValue(0);
     }
 
-    // Go to next card or end if it's the last one
     if (currentIndex === flashcards.length - 1) {
-      // Show session complete dialog
       Alert.alert(
         "Session Complete",
         `You've reviewed all cards!\n\nCorrect: ${sessionStats.correctAnswers + (isCorrect ? 1 : 0)}\nIncorrect: ${sessionStats.incorrectAnswers + (!isCorrect ? 1 : 0)}`,
@@ -612,7 +581,7 @@ export default function FlashcardsScreen({ route, navigation }) {
     } else {
       setCurrentIndex(prevIndex => prevIndex + 1);
     }
-  };
+  }
 
   const nextCard = () => {
     if (showAnswer) {
@@ -622,8 +591,8 @@ export default function FlashcardsScreen({ route, navigation }) {
 
     setCurrentIndex((prevIndex) =>
       prevIndex === flashcards.length - 1 ? 0 : prevIndex + 1
-    );
-  };
+    )
+  }
 
   const prevCard = () => {
     if (showAnswer) {
@@ -633,34 +602,34 @@ export default function FlashcardsScreen({ route, navigation }) {
 
     setCurrentIndex((prevIndex) =>
       prevIndex === 0 ? flashcards.length - 1 : prevIndex - 1
-    );
-  };
+    )
+  }
 
   const frontInterpolate = flipAnimation.interpolate({
     inputRange: [0, 1],
     outputRange: ['0deg', '180deg'],
-  });
+  })
 
   const backInterpolate = flipAnimation.interpolate({
     inputRange: [0, 1],
     outputRange: ['180deg', '360deg'],
-  });
+  })
 
   const frontAnimatedStyle = {
     transform: [{ rotateY: frontInterpolate }],
-  };
+  }
 
   const backAnimatedStyle = {
     transform: [{ rotateY: backInterpolate }],
-  };
+  }
 
   const viewProgress = () => {
     saveSession();
     navigation.navigate('FlashcardHistory', {
       tutor,
       topic: topic || 'general'
-    });
-  };
+    })
+  }
 
   if (loading) {
     return (

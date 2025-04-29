@@ -269,40 +269,35 @@ const ProfileScreen = ({ navigation }) => {
 
           <TouchableOpacity
             style={styles.menuItem}
-            onPress={() => setIsEditing(true)}
-          >
+            onPress={() => setIsEditing(true)}>
             <Text style={styles.menuItemText}>Edit Profile & Settings</Text>
             <Text style={styles.menuItemIcon}>→</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
             style={styles.menuItem}
-            onPress={() => navigation.navigate('SubtopicProgress', { tutor: 'biology' })}
-          >
+            onPress={() => navigation.navigate('SubtopicProgress', { tutor: 'biology' })}>
             <Text style={styles.menuItemText}>Learning Progress</Text>
             <Text style={styles.menuItemIcon}>→</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
             style={styles.menuItem}
-            onPress={() => Alert.alert('Coming Soon', 'This feature will be available in a future update.')}
-          >
+            onPress={() => Alert.alert('Coming Soon', 'This feature will be available in a future update.')}>
             <Text style={styles.menuItemText}>Settings</Text>
             <Text style={styles.menuItemIcon}>→</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
             style={styles.menuItem}
-            onPress={() => Alert.alert('Coming Soon', 'This feature will be available in a future update.')}
-          >
+            onPress={() => Alert.alert('Coming Soon', 'This feature will be available in a future update.')}>
             <Text style={styles.menuItemText}>Help & Support</Text>
             <Text style={styles.menuItemIcon}>→</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
             style={[styles.menuItem, styles.signOutItem]}
-            onPress={handleSignOut}
-          >
+            onPress={handleSignOut}>
             <Text style={styles.signOutText}>Sign Out</Text>
           </TouchableOpacity>
         </View>
@@ -312,8 +307,8 @@ const ProfileScreen = ({ navigation }) => {
         <Text style={styles.versionText}>Version 1.0.0</Text>
       </View>
     </ScrollView>
-  );
-};
+  )
+}
 
 const styles = StyleSheet.create({
   container: {
@@ -550,6 +545,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
-});
+})
 
 export default ProfileScreen;

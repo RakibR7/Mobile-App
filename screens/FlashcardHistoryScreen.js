@@ -326,8 +326,7 @@ export default function FlashcardHistoryScreen({ route, navigation }) {
 
       <TouchableOpacity
         style={styles.button}
-        onPress={() => navigation.goBack()}
-      >
+        onPress={() => navigation.goBack()}>
         <Text style={styles.buttonText}>Go Back</Text>
       </TouchableOpacity>
 
@@ -338,13 +337,12 @@ export default function FlashcardHistoryScreen({ route, navigation }) {
             tutor,
             topic,
             topicName: topic
-          })}
-        >
+          })}>
           <Text style={styles.buttonText}>Practice More</Text>
         </TouchableOpacity>
       )}
     </ScrollView>
-  );
+  )
 }
 
 const styles = StyleSheet.create({
@@ -516,4 +514,4 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
   }
-});
+})

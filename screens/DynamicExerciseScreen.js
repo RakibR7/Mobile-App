@@ -1,4 +1,3 @@
-// screens/DynamicExerciseScreen.js
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, TextInput, TouchableOpacity,
@@ -8,7 +7,6 @@ import { useUser } from '../context/UserContext';
 import { updatePerformanceData, getPerformanceData } from '../services/apiService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// Default questions by topic
 const getDefaultQuestions = (topic, tutor) => {
   return [
     {
@@ -26,7 +24,6 @@ const getDefaultQuestions = (topic, tutor) => {
   ];
 };
 
-// Specific questions for biology cells topic
 const getCellsQuestions = () => {
   return [
     {
@@ -65,11 +62,8 @@ export default function DynamicExerciseScreen({ route, navigation }) {
   });
 
   useEffect(() => {
-    // Fetch previous questions when component mounts
     fetchPreviousQuestions();
     setSessionStartTime(Date.now());
-
-    // Cleanup function to save session data when leaving the screen
     return () => {
       if (!showQuizOptions && questions.length > 0 && sessionStats.questionsAttempted > 0) {
         saveSession();
@@ -85,13 +79,11 @@ export default function DynamicExerciseScreen({ route, navigation }) {
       if (userId) {
         try {
           console.log(`Fetching previous questions for user: ${userId}, tutor: ${tutor}, topic: ${topicName || topic || 'any'}`);
-          
-          // Get performance data to extract previous questions
-          // Don't filter by topic initially to see if we get any results
+
           const performanceData = await getPerformanceData(
             userId,
             tutor,
-            null, // Don't filter by topic to get all questions
+            null,
             'quiz'
           );
 
@@ -100,7 +92,6 @@ export default function DynamicExerciseScreen({ route, navigation }) {
           let previousQuestionsFound = [];
 
           if (Array.isArray(performanceData) && performanceData.length > 0) {
-            // Extract questions from all previous quiz sessions
             performanceData.forEach(session => {
               console.log(`Session has ${session.cards?.length || 0} cards`);
               
@@ -110,7 +101,7 @@ export default function DynamicExerciseScreen({ route, navigation }) {
                     previousQuestionsFound.push({
                       id: card.cardId || `q_${previousQuestionsFound.length + 1}`,
                       question: card.question,
-                      answer: card.answer || "" // This might be undefined for some cards
+                      answer: card.answer || ""
                     });
                   }
                 });
@@ -120,9 +111,7 @@ export default function DynamicExerciseScreen({ route, navigation }) {
 
           console.log(`Extracted ${previousQuestionsFound.length} questions from performance data`);
 
-          // If we found questions, remove duplicates
           if (previousQuestionsFound.length > 0) {
-            // Remove duplicates by question text
             const uniqueQuestions = [];
             const questionTexts = new Set();
 
@@ -133,12 +122,12 @@ export default function DynamicExerciseScreen({ route, navigation }) {
               }
             });
 
-            // If we found topics for this specific topic, use them
-            // Otherwise, use all questions we found (better than nothing)
+            //If we found topics for this specific topic, use them
+            //Otherwise, use all questions we found (better than nothing)
             setPreviousQuestions(uniqueQuestions);
             console.log(`Set ${uniqueQuestions.length} unique previous questions`);
           } else {
-            // If no previous questions found, set empty array
+            //If no previous questions found, set empty array
             console.log('No previous questions found in performance data');
             setPreviousQuestions([]);
           }
@@ -360,7 +349,7 @@ export default function DynamicExerciseScreen({ route, navigation }) {
           cardId: questionId,
           question: question.question,
           answer: userAnswer,
-          subtopic: topic || 'general', // Use topic as subtopic
+          subtopic: topic || 'general',
           attempts: fbk.evaluated ? 1 : 0,
           correctAttempts: fbk.correct ? 1 : 0
         };

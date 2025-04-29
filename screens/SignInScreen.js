@@ -113,11 +113,7 @@ const SignInScreen = ({ navigation }) => {
             onPress={handleSignIn}
             disabled={loading}
           >
-            {loading ? (
-              <ActivityIndicator color="#FFFFFF" size="small" />
-            ) : (
-              <Text style={styles.signInButtonText}>Log In</Text>
-            )}
+            {loading ? <ActivityIndicator color="#FFFFFF" size="small" /> : <Text style={styles.signInButtonText}>Log In</Text>}
           </TouchableOpacity>
         </View>
 
@@ -237,6 +233,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginLeft: 5,
   },
-});
+})
 
 export default SignInScreen;

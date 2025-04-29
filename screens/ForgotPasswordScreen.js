@@ -43,73 +43,79 @@ const ForgotPasswordScreen = ({ navigation }) => {
     }
   }
 
-  if (isSubmitted) {
-    return (
-      <View style={styles.container}>
-        <View style={styles.successContainer}>
-          <Text style={styles.emailIcon}>✉️</Text>
-          <Text style={styles.successTitle}>Check Your Email</Text>
-          <Text style={styles.successText}>
-            We've sent password reset instructions to {email}
-          </Text>
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => navigation.navigate('SignIn')}
-          >
-            <Text style={styles.backButtonText}>Back to Login</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    )
+  function renderResetButtonContent() {
+    if (loading) {
+      return <ActivityIndicator color="#FFFFFF" size="small" />;
+    } else {
+      return <Text style={styles.resetButtonText}>Reset Password</Text>;
+    }
   }
 
-  return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={styles.container}>
-      <View style={styles.contentContainer}>
-        <View style={styles.headerContainer}>
-          <TouchableOpacity
-            onPress={() => navigation.goBack()}
-            style={styles.backIconContainer}
-          >
-            <Text style={styles.backIcon}>← Back</Text>
-          </TouchableOpacity>
-          <Text style={styles.title}>Forgot Password</Text>
-          <Text style={styles.subtitle}>
-            Enter your email and we'll send you a link to reset your password
-          </Text>
-        </View>
-
-        <View style={styles.formContainer}>
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Email</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Enter your email"
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
-              autoCapitalize="none"
-            />
-            {errors.email && <Text style={styles.errorText}>{errors.email}</Text>}
+  function renderContent() {
+    if (isSubmitted) {
+      return (
+        <View style={styles.container}>
+          <View style={styles.successContainer}>
+            <Text style={styles.emailIcon}>✉️</Text>
+            <Text style={styles.successTitle}>Check Your Email</Text>
+            <Text style={styles.successText}>
+              We've sent password reset instructions to {email}
+            </Text>
+            <TouchableOpacity
+              style={styles.backButton}
+              onPress={() => navigation.navigate('SignIn')}>
+              <Text style={styles.backButtonText}>Back to Login</Text>
+            </TouchableOpacity>
           </View>
-
-          <TouchableOpacity
-            style={styles.resetButton}
-            onPress={handleResetPassword}
-            disabled={loading}>
-            {loading ? (
-              <ActivityIndicator color="#FFFFFF" size="small" />
-            ) : (
-              <Text style={styles.resetButtonText}>Reset Password</Text>
-            )}
-          </TouchableOpacity>
         </View>
-      </View>
-    </KeyboardAvoidingView>
-  );
-};
+      )
+    } else {
+      return (
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.container}>
+          <View style={styles.contentContainer}>
+            <View style={styles.headerContainer}>
+              <TouchableOpacity
+                onPress={() => navigation.goBack()}
+                style={styles.backIconContainer}>
+                <Text style={styles.backIcon}>← Back</Text>
+              </TouchableOpacity>
+              <Text style={styles.title}>Forgot Password</Text>
+              <Text style={styles.subtitle}>
+                Enter your email and we'll send you a link to reset your password
+              </Text>
+            </View>
+
+            <View style={styles.formContainer}>
+              <View style={styles.inputContainer}>
+                <Text style={styles.label}>Email</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Enter your email"
+                  value={email}
+                  onChangeText={setEmail}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                />
+                {errors.email && <Text style={styles.errorText}>{errors.email}</Text>}
+              </View>
+
+              <TouchableOpacity
+                style={styles.resetButton}
+                onPress={handleResetPassword}
+                disabled={loading}>
+                {renderResetButtonContent()}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      )
+    }
+  }
+
+  return renderContent();
+}
 
 const styles = StyleSheet.create({
   container: {
@@ -220,6 +226,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
-});
+})
 
 export default ForgotPasswordScreen;

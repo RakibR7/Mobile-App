@@ -134,7 +134,7 @@ export default function ProgressScreen({ navigation }) {
     const subjects = [...new Set([
       ...performanceData.flashcards.map(item => item.tutor),
       ...performanceData.quizzes.map(item => item.tutor)
-    ])];
+    ])]
 
     if (subjects.length > 0) {
       return (
@@ -172,10 +172,10 @@ export default function ProgressScreen({ navigation }) {
                   </TouchableOpacity>
                 </View>
               </View>
-            );
+            )
           })}
         </View>
-      );
+      )
     }
     return null;
   }

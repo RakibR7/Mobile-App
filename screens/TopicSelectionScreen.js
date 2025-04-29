@@ -1,8 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import {
-  View, Text, StyleSheet, TouchableOpacity, ScrollView,
-  ImageBackground, Alert
-} from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ImageBackground, Alert } from 'react-native';
 import { subjectsData } from '../data/SubjectsData';
 
 export default function TopicSelectionScreen({ route, navigation }) {

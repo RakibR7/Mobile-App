@@ -130,7 +130,7 @@ export default function FlashcardsScreen({ route, navigation }) {
             tutor,
             null,
             'flashcard'
-          );
+          )
 
           console.log(`Retrieved ${performanceData?.length || 0} flashcard sessions`);
 
@@ -223,7 +223,7 @@ export default function FlashcardsScreen({ route, navigation }) {
       if (difficulty === 'easy') {
         difficultyGuide = 'Make these beginner-friendly with clear explanations and basic concepts. Focus on foundational knowledge that new learners need to understand.';
       } else if (difficulty === 'normal') {
-        difficultyGuide = 'Include moderately challenging content appropriate for students with some background knowledge. Balance depth and accessibility.';
+        difficultyGuide = 'Include moderately challenging content appropriate for students with some background knowledge. Balance depth between easy and hard.';
       } else if (difficulty === 'hard') {
         difficultyGuide = 'Create challenging, exam-style questions that test deeper understanding and application of concepts. Include advanced topics and complex relationships.';
       }

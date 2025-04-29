@@ -130,7 +130,7 @@ export default function FlashcardsScreen({ route, navigation }) {
             tutor,
             null,
             'flashcard'
-          );
+          )
 
           console.log(`Retrieved ${performanceData?.length || 0} flashcard sessions`);
 

@@ -793,8 +793,7 @@ export default function DynamicExerciseScreen({ route, navigation }) {
               } else {
                 setShowQuizOptions(true)
               }
-            }}
-          >
+            }}>
             <Text style={styles.optionsButtonText}>Quiz Options</Text>
           </TouchableOpacity>
         </View>

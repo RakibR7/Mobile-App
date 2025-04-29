@@ -110,11 +110,9 @@ export default function FlashcardsScreen({ route, navigation }) {
   const flipAnimation = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    //Fetch saved flashcards on mount
     fetchSavedFlashcards();
     setSessionStartTime(Date.now());
 
-    //Cleanup when leaving the screen
     return () => {
       if (flashcards.length > 0 && sessionStats.cardsStudied > 0) {
         saveSession();
@@ -127,22 +125,19 @@ export default function FlashcardsScreen({ route, navigation }) {
       setLoading(true);
       setNetworkError(false);
 
-      //Get previously studied flashcards from the performance data
       if (userId) {
         try {
           console.log(`Fetching flashcards for user: ${userId}, tutor: ${tutor}, topic: ${topic || topicName}`);
 
-          //First try to get data for the specific topic/subtopic
           const performanceData = await getPerformanceData(
             userId,
             tutor,
-            null, //Change from topicName to null to get all topics for the tutor
+            null,
             'flashcard'
           );
 
           console.log(`Retrieved ${performanceData?.length || 0} flashcard sessions`);
 
-          //Extract unique flashcards from the performance data
           const savedCards = [];
           const uniqueQuestions = new Set();
 
@@ -470,7 +465,7 @@ export default function FlashcardsScreen({ route, navigation }) {
             style: 'cancel'
           }
         ]
-      );
+      )
       return;
     }
 
@@ -524,7 +519,7 @@ export default function FlashcardsScreen({ route, navigation }) {
       cardsStudied: prev.cardsStudied + 1,
       correctAnswers: isCorrect ? prev.correctAnswers + 1 : prev.correctAnswers,
       incorrectAnswers: !isCorrect ? prev.incorrectAnswers + 1 : prev.incorrectAnswers
-    }));
+    }))
 
     setFlashcards(updatedFlashcards);
 
@@ -573,11 +568,11 @@ export default function FlashcardsScreen({ route, navigation }) {
               navigation.navigate('FlashcardHistory', {
                 tutor,
                 topic: topic || topicName
-              });
+              })
             }
           }
         ]
-      );
+      )
     } else {
       setCurrentIndex(prevIndex => prevIndex + 1);
     }
@@ -641,7 +636,7 @@ export default function FlashcardsScreen({ route, navigation }) {
             : "Creating flashcards..."}
         </Text>
       </View>
-    );
+    )
   }
 
   if (showRevisionOptions) {
@@ -666,8 +661,7 @@ export default function FlashcardsScreen({ route, navigation }) {
 
           <TouchableOpacity
             style={styles.optionButton}
-            onPress={generateFlashcards}
-          >
+            onPress={generateFlashcards}>
             <Text style={styles.optionButtonText}>Study New Cards</Text>
             <Text style={styles.optionDescription}>
               Generate a new set of flashcards on this topic
@@ -680,8 +674,7 @@ export default function FlashcardsScreen({ route, navigation }) {
               savedFlashcards.length === 0 ? styles.disabledButton : null
             ]}
             onPress={startRevision}
-            disabled={savedFlashcards.length === 0}
-          >
+            disabled={savedFlashcards.length === 0}>
             <Text style={styles.optionButtonText}>
               Review Previous Cards
             </Text>
@@ -694,8 +687,7 @@ export default function FlashcardsScreen({ route, navigation }) {
 
           <TouchableOpacity
             style={styles.progressButton}
-            onPress={viewProgress}
-          >
+            onPress={viewProgress}>
             <Text style={styles.progressButtonText}>
               View Study Progress
             </Text>
@@ -703,15 +695,14 @@ export default function FlashcardsScreen({ route, navigation }) {
 
           <TouchableOpacity
             style={styles.backButton}
-            onPress={() => navigation.goBack()}
-          >
+            onPress={() => navigation.goBack()}>
             <Text style={styles.backButtonText}>
               Back to Topics
             </Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
-    );
+    )
   }
 
   return (
@@ -779,15 +770,13 @@ export default function FlashcardsScreen({ route, navigation }) {
           <View style={styles.ratingButtons}>
             <TouchableOpacity
               style={[styles.ratingButton, styles.incorrectButton]}
-              onPress={() => markCardResult(false)}
-            >
+              onPress={() => markCardResult(false)}>
               <Text style={styles.ratingButtonText}>Didn't Know</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
               style={[styles.ratingButton, styles.correctButton]}
-              onPress={() => markCardResult(true)}
-            >
+              onPress={() => markCardResult(true)}>
               <Text style={styles.ratingButtonText}>Knew It</Text>
             </TouchableOpacity>
           </View>
@@ -810,8 +799,7 @@ export default function FlashcardsScreen({ route, navigation }) {
           onPress={() => {
             saveSession();
             setShowRevisionOptions(true);
-          }}
-        >
+          }}>
           <Text style={styles.actionButtonText}>Study Options</Text>
         </TouchableOpacity>
 

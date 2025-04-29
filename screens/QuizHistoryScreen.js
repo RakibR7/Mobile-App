@@ -45,7 +45,7 @@ export default function QuizHistoryScreen({ route, navigation }) {
       tutor,
       topic,
       activityType: 'quiz'
-    };
+    }
     setDebugInfo(prev => ({ ...prev, requestParams }));
 
     try {
@@ -121,7 +121,7 @@ export default function QuizHistoryScreen({ route, navigation }) {
         accuracy: totalQuestions > 0 ? Math.round((totalCorrect / totalQuestions) * 100) : 0,
         totalTime,
         averageScore: totalQuizzes > 0 ? Math.round(totalCorrect / totalQuizzes) : 0
-      });
+      })
 
     } catch (error) {
       console.error('Error fetching quiz history:', error);

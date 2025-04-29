@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react'
 import {
   View, Text, StyleSheet, TextInput, TouchableOpacity,
   ScrollView, ActivityIndicator, Alert
-} from 'react-native';
-import { useUser } from '../context/UserContext';
-import { updatePerformanceData, getPerformanceData } from '../services/apiService';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+} from 'react-native'
+import { useUser } from '../context/UserContext'
+import { updatePerformanceData, getPerformanceData } from '../services/apiService'
+import AsyncStorage from '@react-native-async-storage/async-storage'
 
 const getDefaultQuestions = (topic, tutor) => {
   return [
@@ -21,8 +21,8 @@ const getDefaultQuestions = (topic, tutor) => {
       id: 3,
       question: `How would you apply ${topic || tutor} in a real-world scenario?`
     }
-  ];
-};
+  ]
+}
 
 const getCellsQuestions = () => {
   return [
@@ -38,63 +38,63 @@ const getCellsQuestions = () => {
       id: 3,
       question: "Compare and contrast the structure and function of rough and smooth endoplasmic reticulum."
     }
-  ];
-};
+  ]
+}
 
 export default function DynamicExerciseScreen({ route, navigation }) {
-  const { tutor, topic, topicName } = route.params;
-  const { userId } = useUser();
+  const { tutor, topic, topicName } = route.params
+  const { userId } = useUser()
 
-  const [questions, setQuestions] = useState([]);
-  const [previousQuestions, setPreviousQuestions] = useState([]);
-  const [answers, setAnswers] = useState({});
-  const [feedback, setFeedback] = useState({});
-  const [loading, setLoading] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
-  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-  const [sessionStartTime, setSessionStartTime] = useState(null);
-  const [showQuizOptions, setShowQuizOptions] = useState(true);
-  const [networkError, setNetworkError] = useState(false);
+  const [questions, setQuestions] = useState([])
+  const [previousQuestions, setPreviousQuestions] = useState([])
+  const [answers, setAnswers] = useState({})
+  const [feedback, setFeedback] = useState({})
+  const [loading, setLoading] = useState(true)
+  const [submitting, setSubmitting] = useState(false)
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0)
+  const [sessionStartTime, setSessionStartTime] = useState(null)
+  const [showQuizOptions, setShowQuizOptions] = useState(true)
+  const [networkError, setNetworkError] = useState(false)
   const [sessionStats, setSessionStats] = useState({
     questionsAttempted: 0,
     correctAnswers: 0,
     timeSpent: 0
-  });
+  })
 
   useEffect(() => {
-    fetchPreviousQuestions();
-    setSessionStartTime(Date.now());
+    fetchPreviousQuestions()
+    setSessionStartTime(Date.now())
     return () => {
       if (!showQuizOptions && questions.length > 0 && sessionStats.questionsAttempted > 0) {
-        saveSession();
+        saveSession()
       }
-    };
-  }, []);
+    }
+  }, [])
 
   const fetchPreviousQuestions = async () => {
     try {
-      setLoading(true);
-      setNetworkError(false);
+      setLoading(true)
+      setNetworkError(false)
 
       if (userId) {
         try {
-          console.log(`Fetching previous questions for user: ${userId}, tutor: ${tutor}, topic: ${topicName || topic || 'any'}`);
+          console.log(`Fetching previous questions for user: ${userId}, tutor: ${tutor}, topic: ${topicName || topic || 'any'}`)
 
           const performanceData = await getPerformanceData(
             userId,
             tutor,
             null,
             'quiz'
-          );
+          )
 
-          console.log(`Retrieved ${performanceData?.length || 0} quiz sessions`);
-          
-          let previousQuestionsFound = [];
+          console.log(`Retrieved ${performanceData?.length || 0} quiz sessions`)
+
+          let previousQuestionsFound = []
 
           if (Array.isArray(performanceData) && performanceData.length > 0) {
             performanceData.forEach(session => {
-              console.log(`Session has ${session.cards?.length || 0} cards`);
-              
+              console.log(`Session has ${session.cards?.length || 0} cards`)
+
               if (session.cards && Array.isArray(session.cards)) {
                 session.cards.forEach(card => {
                   if (card.question) {
@@ -102,77 +102,74 @@ export default function DynamicExerciseScreen({ route, navigation }) {
                       id: card.cardId || `q_${previousQuestionsFound.length + 1}`,
                       question: card.question,
                       answer: card.answer || ""
-                    });
+                    })
                   }
-                });
+                })
               }
-            });
+            })
           }
 
-          console.log(`Extracted ${previousQuestionsFound.length} questions from performance data`);
+          console.log(`Extracted ${previousQuestionsFound.length} questions from performance data`)
 
           if (previousQuestionsFound.length > 0) {
-            const uniqueQuestions = [];
-            const questionTexts = new Set();
+            const uniqueQuestions = []
+            const questionTexts = new Set()
 
             previousQuestionsFound.forEach(q => {
               if (!questionTexts.has(q.question)) {
-                questionTexts.add(q.question);
-                uniqueQuestions.push(q);
+                questionTexts.add(q.question)
+                uniqueQuestions.push(q)
               }
-            });
+            })
 
-            //If we found topics for this specific topic, use them
-            //Otherwise, use all questions we found (better than nothing)
-            setPreviousQuestions(uniqueQuestions);
-            console.log(`Set ${uniqueQuestions.length} unique previous questions`);
+            setPreviousQuestions(uniqueQuestions)
+            console.log(`Set ${uniqueQuestions.length} unique previous questions`)
           } else {
-            //If no previous questions found, set empty array
-            console.log('No previous questions found in performance data');
-            setPreviousQuestions([]);
+            console.log('No previous questions found in performance data')
+            setPreviousQuestions([])
           }
         } catch (error) {
-          console.error('Error fetching previous questions:', error);
-          setPreviousQuestions([]);
+          console.error('Error fetching previous questions:', error)
+          setPreviousQuestions([])
         }
       }
     } catch (error) {
-      console.error('Error in fetchPreviousQuestions:', error);
-      setPreviousQuestions([]);
+      console.error('Error in fetchPreviousQuestions:', error)
+      setPreviousQuestions([])
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
   }
 
   const generateQuestions = async () => {
-    setLoading(true);
-    setNetworkError(false);
+    setLoading(true)
+    setNetworkError(false)
 
     try {
-      let difficulty = 'normal';
+      let difficulty = 'normal'
       try {
-        const savedDifficulty = await AsyncStorage.getItem('questionDifficulty');
+        const savedDifficulty = await AsyncStorage.getItem('questionDifficulty')
         if (savedDifficulty) {
-          difficulty = savedDifficulty;
+          difficulty = savedDifficulty
         }
       } catch (error) {
-        console.log('Could not load difficulty setting:', error);
+        console.log('Could not load difficulty setting:', error)
       }
 
       const tutorModel = {
         biology: 'ft:gpt-3.5-turbo-0125:personal:csp-biology-finetuning-data10-20000:BJN7IqeS',
         python: 'ft:gpt-3.5-turbo-0125:personal:dr1-csv6-shortened-3381:B0DlvD7p'
-      }[tutor] || 'gpt-3.5-turbo';
+      }[tutor] || 'gpt-3.5-turbo'
 
-      const uniqueId = Math.random().toString(36).substring(2, 8);
+      const uniqueId = Math.random().toString(36).substring(2, 8)
 
-      let difficultyGuide = '';
+      let difficultyGuide = ''
       if (difficulty === 'easy') {
-        difficultyGuide = 'Create beginner-friendly questions that focus on basic concepts and definitions. Use simple language and provide clear context. These should help build foundational knowledge.';
+        difficultyGuide = 'Create beginner-friendly questions that focus on basic concepts and definitions. Use simple language and provide clear context. These should help build foundational knowledge.'
       } else if (difficulty === 'normal') {
-        difficultyGuide = 'Create moderately challenging questions that test understanding and application of concepts. Include some analytical thinking but maintain accessibility.';
+        difficultyGuide = 'Create moderately challenging questions that test understanding and application of concepts. Include some analytical thinking but maintain accessibility.'
       } else if (difficulty === 'hard') {
-        difficultyGuide = 'Create challenging, exam-style questions that require deep understanding, critical thinking, and application of multiple concepts. These should prepare students for advanced assessments.';
+        difficultyGuide = 'Create challenging, exam-style questions that require deep understanding, critical thinking, and application of multiple concepts. These should prepare students for advanced assessments.'
       }
 
       const prompt = `Create 3 ${difficulty} difficulty practice questions about ${topicName} in ${tutor}.
@@ -180,9 +177,9 @@ export default function DynamicExerciseScreen({ route, navigation }) {
       Make these questions unique and not generic textbook questions.
       ID: ${uniqueId}
       Format as JSON array with structure [{"id": 1, "question": "question text"}].
-      Only return the JSON, no other text.`;
+      Only return the JSON, no other text.`
 
-      console.log(`Using model ${tutorModel} for quiz generation with ${difficulty} difficulty`);
+      console.log(`Using model ${tutorModel} for quiz generation with ${difficulty} difficulty`)
 
       const response = await fetch('https://api.teachmetutor.academy/api/openai', {
         method: 'POST',
@@ -193,152 +190,146 @@ export default function DynamicExerciseScreen({ route, navigation }) {
           tutor
         }),
         timeout: 15000
-      });
+      })
 
       if (!response.ok) {
-        throw new Error(`Server responded with status ${response.status}`);
+        throw new Error(`Server responded with status ${response.status}`)
       }
 
-      const data = await response.json();
+      const data = await response.json()
 
-      let parsedQuestions;
+      let parsedQuestions
       try {
         // Try different parsing strategies
         if (typeof data.response === 'string') {
-          const jsonMatch = data.response.match(/\[\s*\{.*\}\s*\]/s);
+          const jsonMatch = data.response.match(/\[\s*\{.*\}\s*\]/s)
           if (jsonMatch) {
-            parsedQuestions = JSON.parse(jsonMatch[0]);
+            parsedQuestions = JSON.parse(jsonMatch[0])
           } else if (data.response.startsWith('[') && data.response.endsWith(']')) {
-            parsedQuestions = JSON.parse(data.response);
+            parsedQuestions = JSON.parse(data.response)
           } else {
-            throw new Error("Couldn't extract JSON from response");
+            throw new Error("Couldn't extract JSON from response")
           }
         } else if (Array.isArray(data.response)) {
-          parsedQuestions = data.response;
+          parsedQuestions = data.response
         } else {
-          throw new Error("Unexpected response format");
+          throw new Error("Unexpected response format")
         }
 
         // Add difficulty property
         parsedQuestions = parsedQuestions.map((q, idx) => ({
           ...q,
           difficulty: difficulty
-        }));
+        }))
       } catch (parseError) {
-        console.error('Error parsing questions:', parseError);
+        console.error('Error parsing questions:', parseError)
 
         // Use default questions as fallback, but adjust for difficulty
-        let fallbackQuestions;
+        let fallbackQuestions
         if (tutor === 'biology' && topic === 'cells') {
-          fallbackQuestions = getCellsQuestions();
+          fallbackQuestions = getCellsQuestions()
         } else {
-          fallbackQuestions = getDefaultQuestions(topicName, tutor);
+          fallbackQuestions = getDefaultQuestions(topicName, tutor)
         }
 
         // Modify questions based on difficulty
         fallbackQuestions = fallbackQuestions.map(q => {
-          let modifiedQuestion = q.question;
+          let modifiedQuestion = q.question
 
           if (difficulty === 'easy') {
-            modifiedQuestion = `[Beginner] ${q.question} Explain in simple terms.`;
+            modifiedQuestion = `[Beginner] ${q.question} Explain in simple terms.`
           } else if (difficulty === 'normal') {
-            modifiedQuestion = `[Intermediate] ${q.question} Provide a thorough explanation.`;
+            modifiedQuestion = `[Intermediate] ${q.question} Provide a thorough explanation.`
           } else if (difficulty === 'hard') {
-            modifiedQuestion = `[Advanced] ${q.question} Analyze in depth and discuss broader implications.`;
+            modifiedQuestion = `[Advanced] ${q.question} Analyze in depth and discuss broader implications.`
           }
 
           return {
             ...q,
             question: modifiedQuestion,
             difficulty: difficulty
-          };
-        });
+          }
+        })
 
-        // Randomize order
-        parsedQuestions = fallbackQuestions.sort(() => Math.random() - 0.5);
+        parsedQuestions = fallbackQuestions.sort(() => Math.random() - 0.5)
       }
 
-      setShowQuizOptions(false);
-      setQuestions(parsedQuestions);
-      setCurrentQuestionIndex(0);
-      setAnswers({});
-      setFeedback({});
+      setShowQuizOptions(false)
+      setQuestions(parsedQuestions)
+      setCurrentQuestionIndex(0)
+      setAnswers({})
+      setFeedback({})
       setSessionStats({
         questionsAttempted: 0,
         correctAnswers: 0,
         timeSpent: 0
-      });
-      setSessionStartTime(Date.now());
+      })
+      setSessionStartTime(Date.now())
     } catch (error) {
-      console.error('Error generating questions:', error);
-      setNetworkError(true);
+      console.error('Error generating questions:', error)
+      setNetworkError(true)
 
-      // Try to get the saved difficulty
-      let difficulty = 'normal';
+      let difficulty = 'normal'
       try {
-        const savedDifficulty = await AsyncStorage.getItem('questionDifficulty');
+        const savedDifficulty = await AsyncStorage.getItem('questionDifficulty')
         if (savedDifficulty) {
-          difficulty = savedDifficulty;
+          difficulty = savedDifficulty
         }
       } catch (err) {
-        console.log('Could not load difficulty setting on error:', err);
+        console.log('Could not load difficulty setting on error:', err)
       }
 
-      // Use default questions as fallback
-      let fallbackQuestions;
+      let fallbackQuestions
       if (tutor === 'biology' && topic === 'cells') {
-        fallbackQuestions = getCellsQuestions();
+        fallbackQuestions = getCellsQuestions()
       } else {
-        fallbackQuestions = getDefaultQuestions(topicName, tutor);
+        fallbackQuestions = getDefaultQuestions(topicName, tutor)
       }
 
-      // Add difficulty-based modifications
       fallbackQuestions = fallbackQuestions.map(q => {
-        let modifiedQuestion = q.question;
+        let modifiedQuestion = q.question
 
-        // Modify question based on difficulty
         if (difficulty === 'easy') {
-          modifiedQuestion = `[Beginner Level] ${q.question}`;
+          modifiedQuestion = `[Beginner Level] ${q.question}`
         } else if (difficulty === 'normal') {
-          modifiedQuestion = `[Standard Level] ${q.question}`;
+          modifiedQuestion = `[Standard Level] ${q.question}`
         } else if (difficulty === 'hard') {
-          modifiedQuestion = `[Advanced Level] ${q.question}`;
+          modifiedQuestion = `[Advanced Level] ${q.question}`
         }
 
         return {
           ...q,
           question: modifiedQuestion,
           difficulty: difficulty
-        };
-      }).sort(() => Math.random() - 0.5);
+        }
+      }).sort(() => Math.random() - 0.5)
 
-      setQuestions(fallbackQuestions);
-      setShowQuizOptions(false);
-      setCurrentQuestionIndex(0);
-      setAnswers({});
-      setFeedback({});
+      setQuestions(fallbackQuestions)
+      setShowQuizOptions(false)
+      setCurrentQuestionIndex(0)
+      setAnswers({})
+      setFeedback({})
       setSessionStats({
         questionsAttempted: 0,
         correctAnswers: 0,
         timeSpent: 0
-      });
-      setSessionStartTime(Date.now());
+      })
+      setSessionStartTime(Date.now())
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   const saveSession = async () => {
-    if (sessionStats.questionsAttempted === 0 || !userId) return;
+    if (sessionStats.questionsAttempted === 0 || !userId) return
 
     try {
-      const timeSpent = Math.floor((Date.now() - sessionStartTime) / 1000);
+      const timeSpent = Math.floor((Date.now() - sessionStartTime) / 1000)
 
-      // Prepare card data for each question with subtopic
       const cardsData = questions.map(question => {
-        const questionId = String(question.id);
-        const userAnswer = answers[questionId] || '';
-        const fbk = feedback[questionId] || {};
+        const questionId = String(question.id)
+        const userAnswer = answers[questionId] || ''
+        const fbk = feedback[questionId] || {}
 
         return {
           cardId: questionId,
@@ -347,16 +338,15 @@ export default function DynamicExerciseScreen({ route, navigation }) {
           subtopic: topic || 'general',
           attempts: fbk.evaluated ? 1 : 0,
           correctAttempts: fbk.correct ? 1 : 0
-        };
-      }).filter(card => card.attempts > 0);
+        }
+      }).filter(card => card.attempts > 0)
 
-      // Prepare session data
       const sessionData = {
         cardsStudied: sessionStats.questionsAttempted,
         correctAnswers: sessionStats.correctAnswers,
         timeSpent,
-        subtopic: topic || 'general' // Use topic as subtopic
-      };
+        subtopic: topic || 'general'
+      }
 
       console.log("Saving quiz performance:", {
         userId,
@@ -366,9 +356,8 @@ export default function DynamicExerciseScreen({ route, navigation }) {
         activityType: 'quiz',
         sessionData,
         cardsData: cardsData.length
-      });
+      })
 
-      // Send data to server
       await updatePerformanceData({
         userId,
         tutor,
@@ -377,52 +366,48 @@ export default function DynamicExerciseScreen({ route, navigation }) {
         activityType: 'quiz',
         sessionData,
         cards: cardsData
-      });
+      })
 
-      console.log("Quiz session saved successfully");
+      console.log("Quiz session saved successfully")
 
     } catch (error) {
-      console.error('Error saving session data:', error);
-      // Don't show errors to user for this process
+      console.error('Error saving session data:', error)
     }
-  };
+  }
 
   const handleAnswerChange = (id, text) => {
-    setAnswers({...answers, [id]: text});
-  };
+    setAnswers({...answers, [id]: text})
+  }
 
   const evaluateCurrentAnswer = async () => {
     if (!answers[questions[currentQuestionIndex].id] ||
         answers[questions[currentQuestionIndex].id].trim() === '') {
-      Alert.alert('Input Required', 'Please provide an answer before submitting.');
-      return;
+      Alert.alert('Input Required', 'Please provide an answer before submitting.')
+      return
     }
 
-    setSubmitting(true);
+    setSubmitting(true)
 
     try {
-      const currentQuestion = questions[currentQuestionIndex];
-      const userAnswer = answers[currentQuestion.id];
-      const questionDifficulty = currentQuestion.difficulty || 'normal';
+      const currentQuestion = questions[currentQuestionIndex]
+      const userAnswer = answers[currentQuestion.id]
+      const questionDifficulty = currentQuestion.difficulty || 'normal'
 
-      // Get the appropriate model based on tutor
       const tutorModel = {
         biology: 'ft:gpt-3.5-turbo-0125:personal:csp-biology-finetuning-data10-20000:BJN7IqeS',
         python: 'ft:gpt-3.5-turbo-0125:personal:dr1-csv6-shortened-3381:B0DlvD7p'
-      }[tutor] || 'gpt-3.5-turbo';
+      }[tutor] || 'gpt-3.5-turbo'
 
-      // Adjust feedback style based on difficulty
-      let difficultyGuidance = '';
+      let difficultyGuidance = ''
       if (questionDifficulty === 'easy') {
-        difficultyGuidance = `This is a beginner-level question. Be encouraging and supportive in your feedback. Focus on clarifying basic concepts and providing simple explanations. Use friendly, accessible language.`;
+        difficultyGuidance = `This is a beginner-level question. Be encouraging and supportive in your feedback. Focus on clarifying basic concepts and providing simple explanations. Use friendly, accessible language.`
       } else if (questionDifficulty === 'normal') {
-        difficultyGuidance = `This is an intermediate-level question. Provide balanced feedback that acknowledges strengths and identifies areas for improvement. Include moderate detail in explanations.`;
+        difficultyGuidance = `This is an intermediate-level question. Provide balanced feedback that acknowledges strengths and identifies areas for improvement. Include moderate detail in explanations.`
       } else if (questionDifficulty === 'hard') {
-        difficultyGuidance = `This is an advanced-level question. Provide thorough, detailed feedback with rigorous analysis. Point out nuances and deeper connections. Set high standards for accuracy and completeness.`;
+        difficultyGuidance = `This is an advanced-level question. Provide thorough, detailed feedback with rigorous analysis. Point out nuances and deeper connections. Set high standards for accuracy and completeness.`
       }
 
-      // Send the question and answer to the AI for evaluation
-      const prompt = `Question: "${currentQuestion.question}"\n\nStudent's answer: "${userAnswer}"\n\n${difficultyGuidance}\n\nEvaluate this answer for a ${tutor} student studying ${topicName}. Provide detailed feedback on the answer's correctness, completeness, and areas for improvement. Format your response as JSON: {"correct": true/false, "feedback": "your detailed feedback here"}`;
+      const prompt = `Question: "${currentQuestion.question}"\n\nStudent's answer: "${userAnswer}"\n\n${difficultyGuidance}\n\nEvaluate this answer for a ${tutor} student studying ${topicName}. Provide detailed feedback on the answer's correctness, completeness, and areas for improvement. Format your response as JSON: {"correct": true/false, "feedback": "your detailed feedback here"}`
 
       const response = await fetch('https://api.teachmetutor.academy/api/openai', {
         method: 'POST',
@@ -432,98 +417,87 @@ export default function DynamicExerciseScreen({ route, navigation }) {
           model: tutorModel,
           tutor
         }),
-        timeout: 15000 // Longer timeout for evaluation responses
-      });
+        timeout: 15000
+      })
 
       if (!response.ok) {
-        throw new Error(`Server responded with status ${response.status}`);
+        throw new Error(`Server responded with status ${response.status}`)
       }
 
-      const data = await response.json();
+      const data = await response.json()
 
-      // Parse the AI response to extract the evaluation
-      let evaluation;
+      let evaluation
       try {
-        // Try different parsing strategies
         if (typeof data.response === 'string') {
-          const jsonMatch = data.response.match(/\{.*\}/s);
+          const jsonMatch = data.response.match(/\{.*\}/s)
           if (jsonMatch) {
-            evaluation = JSON.parse(jsonMatch[0]);
+            evaluation = JSON.parse(jsonMatch[0])
           } else if (data.response.startsWith('{') && data.response.endsWith('}')) {
-            evaluation = JSON.parse(data.response);
+            evaluation = JSON.parse(data.response)
           } else {
-            throw new Error("Couldn't extract JSON from response");
+            throw new Error("Couldn't extract JSON from response")
           }
         } else if (typeof data.response === 'object') {
-          evaluation = data.response;
+          evaluation = data.response
         } else {
-          throw new Error("Unexpected response format");
+          throw new Error("Unexpected response format")
         }
       } catch (parseError) {
-        console.error('Error parsing evaluation:', parseError);
+        console.error('Error parsing evaluation:', parseError)
 
-        // Provide a basic evaluation when parsing fails
         evaluation = {
           correct: false,
           feedback: `I couldn't properly analyze your answer. Here's some general guidance on this ${questionDifficulty} question: The question is asking about ${currentQuestion.question.split(' ').slice(0, 5).join(' ')}... When answering, focus on key concepts and provide specific examples. Try to be precise and thorough in your explanation.`
-        };
+        }
       }
 
-      // Add 'evaluated' flag to the feedback
-      evaluation.evaluated = true;
-      // Also add difficulty level
-      evaluation.difficulty = questionDifficulty;
+      evaluation.evaluated = true
+      evaluation.difficulty = questionDifficulty
 
-      // Update feedback state with the evaluation
       setFeedback({
         ...feedback,
         [currentQuestion.id]: evaluation
-      });
+      })
 
-      // Update session stats
       setSessionStats(prev => ({
         ...prev,
         questionsAttempted: prev.questionsAttempted + 1,
         correctAnswers: evaluation.correct ? prev.correctAnswers + 1 : prev.correctAnswers
-      }));
+      }))
 
     } catch (error) {
-      console.error('Error evaluating answer:', error);
+      console.error('Error evaluating answer:', error)
 
-      // Get the current difficulty
-      const questionDifficulty = questions[currentQuestionIndex].difficulty || 'normal';
+      const questionDifficulty = questions[currentQuestionIndex].difficulty || 'normal'
 
-      // Provide a fallback evaluation when the API call fails
       const fallbackEvaluation = {
         correct: false,
         feedback: `Unable to evaluate your answer at this time. For this ${questionDifficulty} level question, consider reviewing the key concepts related to ${topicName} and try again.`,
         evaluated: true,
         difficulty: questionDifficulty
-      };
+      }
 
       setFeedback({
         ...feedback,
         [questions[currentQuestionIndex].id]: fallbackEvaluation
-      });
+      })
 
-      // Still count the question as attempted
       setSessionStats(prev => ({
         ...prev,
         questionsAttempted: prev.questionsAttempted + 1
-      }));
+      }))
     } finally {
-      setSubmitting(false);
+      setSubmitting(false)
     }
-  };
+  }
 
   const moveToNextQuestion = () => {
     if (currentQuestionIndex < questions.length - 1) {
-      setCurrentQuestionIndex(currentQuestionIndex + 1);
+      setCurrentQuestionIndex(currentQuestionIndex + 1)
     } else {
-      // All questions answered - show session summary
-      const timeSpent = Math.floor((Date.now() - sessionStartTime) / 1000);
-      const minutes = Math.floor(timeSpent / 60);
-      const seconds = timeSpent % 60;
+      const timeSpent = Math.floor((Date.now() - sessionStartTime) / 1000)
+      const minutes = Math.floor(timeSpent / 60)
+      const seconds = timeSpent % 60
 
       Alert.alert(
         'Quiz Complete',
@@ -532,32 +506,32 @@ export default function DynamicExerciseScreen({ route, navigation }) {
           {
             text: 'New Quiz',
             onPress: () => {
-              saveSession();
-              setShowQuizOptions(true);
+              saveSession()
+              setShowQuizOptions(true)
             }
           },
           {
             text: 'View Progress',
             onPress: () => {
-              saveSession();
+              saveSession()
               navigation.navigate('QuizHistory', {
                 tutor,
                 topic: topic || topicName
-              });
+              })
             }
           },
           {
             text: 'Done',
             onPress: () => {
-              saveSession();
-              navigation.goBack();
+              saveSession()
+              navigation.goBack()
             },
             style: 'cancel'
           }
         ]
-      );
+      )
     }
-  };
+  }
 
   const startRevision = () => {
     if (previousQuestions.length === 0) {
@@ -574,45 +548,137 @@ export default function DynamicExerciseScreen({ route, navigation }) {
             style: 'cancel'
           }
         ]
-      );
-      return;
+      )
+      return
     }
 
-    setShowQuizOptions(false);
-    setQuestions(previousQuestions);
-    setCurrentQuestionIndex(0);
-    setAnswers({});
-    setFeedback({});
+    setShowQuizOptions(false)
+    setQuestions(previousQuestions)
+    setCurrentQuestionIndex(0)
+    setAnswers({})
+    setFeedback({})
     setSessionStats({
       questionsAttempted: 0,
       correctAnswers: 0,
       timeSpent: 0
-    });
-    setSessionStartTime(Date.now());
-  };
+    })
+    setSessionStartTime(Date.now())
+  }
 
   const viewProgress = () => {
     if (!showQuizOptions && sessionStats.questionsAttempted > 0) {
-      saveSession();
+      saveSession()
     }
     navigation.navigate('QuizHistory', {
       tutor,
       topic: topic || topicName
-    });
-  };
-
-  if (loading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#FE7648" />
-        <Text style={styles.loadingText}>
-          {showQuizOptions ? "Loading quiz options..." : "Generating questions..."}
-        </Text>
-      </View>
-    );
+    })
   }
 
-  if (showQuizOptions) {
+  function renderNetworkError() {
+    if (networkError) {
+      return (
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>
+            Network issue detected. You can still use quizzes in offline mode.
+          </Text>
+        </View>
+      )
+    }
+    return null
+  }
+
+  function renderDifficultyBadge() {
+    if (currentQuestion?.difficulty) {
+      let badgeStyle
+      let difficultyText
+
+      if (currentQuestion.difficulty === 'easy') {
+        badgeStyle = [styles.difficultyBadge, styles.easyBadge]
+        difficultyText = 'Easy'
+      } else if (currentQuestion.difficulty === 'hard') {
+        badgeStyle = [styles.difficultyBadge, styles.hardBadge]
+        difficultyText = 'Hard'
+      } else {
+        badgeStyle = [styles.difficultyBadge, styles.normalBadge]
+        difficultyText = 'Normal'
+      }
+
+      return (
+        <View style={badgeStyle}>
+          <Text style={styles.difficultyText}>{difficultyText}</Text>
+        </View>
+      )
+    }
+    return null
+  }
+
+  function renderSubmittingIndicator() {
+    if (submitting) {
+      return (
+        <View style={styles.submittingContainer}>
+          <ActivityIndicator size="small" color="#FE7648" />
+          <Text style={styles.submittingText}>Evaluating your answer...</Text>
+        </View>
+      )
+    }
+    return null
+  }
+
+  function renderFeedback() {
+    if (currentFeedback) {
+      let feedbackStyle
+      let feedbackTitle
+
+      if (currentFeedback.correct) {
+        feedbackStyle = [styles.feedbackContainer, styles.correctFeedback]
+        feedbackTitle = "Good work!"
+      } else {
+        feedbackStyle = [styles.feedbackContainer, styles.incorrectFeedback]
+        feedbackTitle = "Needs improvement"
+      }
+
+      return (
+        <View style={feedbackStyle}>
+          <Text style={styles.feedbackTitle}>{feedbackTitle}</Text>
+          <Text style={styles.feedbackText}>{currentFeedback.feedback}</Text>
+        </View>
+      )
+    }
+    return null
+  }
+
+  function renderActionButton() {
+    if (!currentFeedback) {
+      return (
+        <TouchableOpacity
+          style={styles.submitButton}
+          onPress={evaluateCurrentAnswer}
+          disabled={submitting}
+        >
+          <Text style={styles.buttonText}>Submit Answer</Text>
+        </TouchableOpacity>
+      )
+    } else {
+      let buttonText
+      if (currentQuestionIndex < questions.length - 1) {
+        buttonText = "Next Question"
+      } else {
+        buttonText = "Finish"
+      }
+
+      return (
+        <TouchableOpacity
+          style={styles.nextButton}
+          onPress={moveToNextQuestion}
+        >
+          <Text style={styles.buttonText}>{buttonText}</Text>
+        </TouchableOpacity>
+      )
+    }
+  }
+
+  function renderOptionsScreen() {
     return (
       <ScrollView style={styles.container}>
         <View style={styles.optionsContainer}>
@@ -624,18 +690,11 @@ export default function DynamicExerciseScreen({ route, navigation }) {
             Choose your quiz mode:
           </Text>
 
-          {networkError && (
-            <View style={styles.errorContainer}>
-              <Text style={styles.errorText}>
-                Network issue detected. You can still use quizzes in offline mode.
-              </Text>
-            </View>
-          )}
+          {renderNetworkError()}
 
           <TouchableOpacity
             style={styles.optionButton}
-            onPress={generateQuestions}
-          >
+            onPress={generateQuestions}>
             <Text style={styles.optionButtonText}>New Questions</Text>
             <Text style={styles.optionDescription}>
               Generate a new set of questions on this topic
@@ -648,8 +707,7 @@ export default function DynamicExerciseScreen({ route, navigation }) {
               previousQuestions.length === 0 ? styles.disabledButton : null
             ]}
             onPress={startRevision}
-            disabled={previousQuestions.length === 0}
-          >
+            disabled={previousQuestions.length === 0}>
             <Text style={styles.optionButtonText}>
               Review Previous Questions
             </Text>
@@ -657,13 +715,12 @@ export default function DynamicExerciseScreen({ route, navigation }) {
               {previousQuestions.length > 0
                 ? `Practice with ${previousQuestions.length} questions you've already tried`
                 : "You haven't completed any quizzes on this topic yet"}
-				</Text>
+            </Text>
           </TouchableOpacity>
 
           <TouchableOpacity
             style={styles.progressButton}
-            onPress={viewProgress}
-          >
+            onPress={viewProgress}>
             <Text style={styles.progressButtonText}>
               View Quiz History
             </Text>
@@ -671,131 +728,103 @@ export default function DynamicExerciseScreen({ route, navigation }) {
 
           <TouchableOpacity
             style={styles.backButton}
-            onPress={() => navigation.goBack()}
-          >
+            onPress={() => navigation.goBack()}>
             <Text style={styles.backButtonText}>
               Back to Topics
             </Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
-    );
+    )
   }
 
-  const currentQuestion = questions[currentQuestionIndex];
-  const currentFeedback = feedback[currentQuestion?.id];
+  function renderQuizScreen() {
+    const currentQuestion = questions[currentQuestionIndex]
+    const currentFeedback = feedback[currentQuestion?.id]
 
-  return (
-    <ScrollView style={styles.container}>
-      <View style={styles.headerContainer}>
-        <Text style={styles.topic}>{topicName}</Text>
-        <Text style={styles.progress}>Question {currentQuestionIndex + 1} of {questions.length}</Text>
+    return (
+      <ScrollView style={styles.container}>
+        <View style={styles.headerContainer}>
+          <Text style={styles.topic}>{topicName}</Text>
+          <Text style={styles.progress}>Question {currentQuestionIndex + 1} of {questions.length}</Text>
 
-        <View style={styles.statsContainer}>
-          <Text style={styles.statsText}>Quiz Progress:</Text>
-          <Text style={styles.statsDetail}>
-            Attempted: {sessionStats.questionsAttempted} | Correct: {sessionStats.correctAnswers}
-          </Text>
-        </View>
-      </View>
-
-      <View style={styles.questionContainer}>
-        {currentQuestion?.difficulty && (
-          <View style={[
-            styles.difficultyBadge,
-            currentQuestion.difficulty === 'easy' ? styles.easyBadge :
-            currentQuestion.difficulty === 'hard' ? styles.hardBadge :
-            styles.normalBadge
-          ]}>
-            <Text style={styles.difficultyText}>
-              {currentQuestion.difficulty === 'easy' ? 'Easy' :
-               currentQuestion.difficulty === 'hard' ? 'Hard' :
-               'Normal'}
+          <View style={styles.statsContainer}>
+            <Text style={styles.statsText}>Quiz Progress:</Text>
+            <Text style={styles.statsDetail}>
+              Attempted: {sessionStats.questionsAttempted} | Correct: {sessionStats.correctAnswers}
             </Text>
           </View>
-        )}
-        <Text style={styles.question}>{currentQuestion?.question}</Text>
-
-        <TextInput
-          style={styles.answerInput}
-          multiline
-          placeholder="Your answer..."
-          value={answers[currentQuestion?.id] || ""}
-          onChangeText={(text) => handleAnswerChange(currentQuestion?.id, text)}
-          editable={!currentFeedback}
-        />
-
-        {submitting && (
-          <View style={styles.submittingContainer}>
-            <ActivityIndicator size="small" color="#FE7648" />
-            <Text style={styles.submittingText}>Evaluating your answer...</Text>
-          </View>
-        )}
-
-        {currentFeedback && (
-          <View style={[
-            styles.feedbackContainer,
-            currentFeedback.correct ? styles.correctFeedback : styles.incorrectFeedback
-          ]}>
-            <Text style={styles.feedbackTitle}>
-              {currentFeedback.correct ? "Good work!" : "Needs improvement"}
-            </Text>
-            <Text style={styles.feedbackText}>{currentFeedback.feedback}</Text>
-          </View>
-        )}
-
-        <View style={styles.buttonContainer}>
-          {!currentFeedback ? (
-            <TouchableOpacity
-              style={styles.submitButton}
-              onPress={evaluateCurrentAnswer}
-              disabled={submitting}
-            >
-              <Text style={styles.buttonText}>Submit Answer</Text>
-            </TouchableOpacity>
-          ) : (
-            <TouchableOpacity
-              style={styles.nextButton}
-              onPress={moveToNextQuestion}
-            >
-              <Text style={styles.buttonText}>
-                {currentQuestionIndex < questions.length - 1 ? "Next Question" : "Finish"}
-              </Text>
-            </TouchableOpacity>
-          )}
         </View>
 
-        <TouchableOpacity
-          style={styles.optionsButton}
-          onPress={() => {
-            if (sessionStats.questionsAttempted > 0) {
-              Alert.alert(
-                'Return to Quiz Options?',
-                'Your current progress will be saved. Do you want to continue?',
-                [
-                  {
-                    text: 'Yes, Save & Return',
-                    onPress: () => {
-                      saveSession();
-                      setShowQuizOptions(true);
+        <View style={styles.questionContainer}>
+          {renderDifficultyBadge()}
+          <Text style={styles.question}>{currentQuestion?.question}</Text>
+
+          <TextInput
+            style={styles.answerInput}
+            multiline
+            placeholder="Your answer..."
+            value={answers[currentQuestion?.id] || ""}
+            onChangeText={(text) => handleAnswerChange(currentQuestion?.id, text)}
+            editable={!currentFeedback}
+          />
+
+          {renderSubmittingIndicator()}
+          {renderFeedback()}
+
+          <View style={styles.buttonContainer}>
+            {renderActionButton()}
+          </View>
+
+          <TouchableOpacity
+            style={styles.optionsButton}
+            onPress={() => {
+              if (sessionStats.questionsAttempted > 0) {
+                Alert.alert(
+                  'Return to Quiz Options?',
+                  'Your current progress will be saved. Do you want to continue?',
+                  [
+                    {
+                      text: 'Yes, Save & Return',
+                      onPress: () => {
+                        saveSession()
+                        setShowQuizOptions(true)
+                      }
+                    },
+                    {
+                      text: 'Cancel',
+                      style: 'cancel'
                     }
-                  },
-                  {
-                    text: 'Cancel',
-                    style: 'cancel'
-                  }
-                ]
-              );
-            } else {
-              setShowQuizOptions(true);
-            }
-          }}
-        >
-          <Text style={styles.optionsButtonText}>Quiz Options</Text>
-        </TouchableOpacity>
+                  ]
+                )
+              } else {
+                setShowQuizOptions(true)
+              }
+            }}
+          >
+            <Text style={styles.optionsButtonText}>Quiz Options</Text>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
+    )
+  }
+
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#FE7648" />
+        <Text style={styles.loadingText}>
+          {showQuizOptions ? "Loading quiz options..." : "Generating questions..."}
+        </Text>
       </View>
-    </ScrollView>
-  );
+    )
+  }
+
+  if (showQuizOptions) {
+    return renderOptionsScreen()
+  } else {
+    return renderQuizScreen()
+  }
 }
 
 const styles = StyleSheet.create({
@@ -1044,4 +1073,4 @@ const styles = StyleSheet.create({
     fontSize: 14,
     textAlign: 'center',
   }
-});
+})

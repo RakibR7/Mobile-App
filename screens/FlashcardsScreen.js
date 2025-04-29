@@ -807,7 +807,7 @@ export default function FlashcardsScreen({ route, navigation }) {
         </TouchableOpacity>
       </View>
     </View>
-  );
+  )
 }
 
 const styles = StyleSheet.create({

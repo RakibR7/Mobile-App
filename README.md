@@ -40,7 +40,7 @@ This is a mobile application designed to provide students with AI-powered tutori
    npm start
    ```
 
-4. Open the app using Expo Go on your mobile device
+4. Open the app using Expo Go on your mobile device and scan the barcode
 
 ** *Login and chat will not work without backend running. (make sure you have all you env files edited for your use case)**
 

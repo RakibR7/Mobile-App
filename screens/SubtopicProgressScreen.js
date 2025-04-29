@@ -5,26 +5,25 @@ import {
 } from 'react-native'
 import { useUser } from '../context/UserContext'
 
-// Simplified subject data
 const subjects = {
   biology: {
     name: "Biology",
     subtopics: [
-      { id: 'cells', name: 'Cell Structure & Function', icon: '🔬' },
-      { id: 'genetics', name: 'Genetics & Heredity', icon: '🧬' },
-      { id: 'evolution', name: 'Evolution & Natural Selection', icon: '🦖' },
-      { id: 'ecosystems', name: 'Ecosystems & Environment', icon: '🌳' },
-      { id: 'anatomy', name: 'Human Anatomy', icon: '🫀' }
+      { id: 'cells', name: 'Cell Structure & Function'},
+      { id: 'genetics', name: 'Genetics & Heredity'},
+      { id: 'evolution', name: 'Evolution & Natural Selection'},
+      { id: 'ecosystems', name: 'Ecosystems & Environment'},
+      { id: 'anatomy', name: 'Human Anatomy'}
     ]
   },
   python: {
     name: "Python",
     subtopics: [
-      { id: 'variables', name: 'Variables & Data Types', icon: '🔤' },
-      { id: 'functions', name: 'Functions & Methods', icon: '⚙️' },
-      { id: 'loops', name: 'Loops & Control Flow', icon: '🔄' },
-      { id: 'oop', name: 'Object-Oriented Programming', icon: '📦' },
-      { id: 'libraries', name: 'Libraries & Modules', icon: '📚' }
+      { id: 'variables', name: 'Variables & Data Types'},
+      { id: 'functions', name: 'Functions & Methods'},
+      { id: 'loops', name: 'Loops & Control Flow'},
+      { id: 'oop', name: 'Object-Oriented Programming'},
+      { id: 'libraries', name: 'Libraries & Modules'}
     ]
   }
 }
@@ -37,7 +36,6 @@ export default function SubtopicProgressScreen({ route, navigation }) {
   const [progress, setProgress] = useState({ overall: 0, subtopics: [] })
   const [error, setError] = useState(null)
 
-  // Fetch progress data when component mounts
   useEffect(() => {
     fetchProgress()
   }, [])
@@ -49,7 +47,6 @@ export default function SubtopicProgressScreen({ route, navigation }) {
     setError(null)
 
     try {
-      // Fetch progress data from API
       const response = await fetch(`https://api.teachmetutor.academy/api/progress/subtopics?userId=${userId}&tutor=${tutor}`)
 
       if (!response.ok) {
@@ -58,7 +55,6 @@ export default function SubtopicProgressScreen({ route, navigation }) {
 
       const data = await response.json()
 
-      // Process the data in a single function
       processAndSetProgress(data)
     } catch (error) {
       console.error('Error fetching progress:', error)
@@ -68,23 +64,19 @@ export default function SubtopicProgressScreen({ route, navigation }) {
     }
   }
 
-  // Process and set the progress data
   const processAndSetProgress = (data) => {
-    // Get subtopics for this tutor
     const tutorSubtopics = subjects[tutor]?.subtopics || []
 
-    // Create a map for quick access to UI data
     const subtopicMap = {}
     tutorSubtopics.forEach(st => {
       subtopicMap[st.id] = st
     })
 
-    // Process API data and add UI information
     const processedSubtopics = data.subtopics.map(apiSubtopic => {
       const uiData = subtopicMap[apiSubtopic.subtopic] || {
         id: apiSubtopic.subtopic,
         name: apiSubtopic.subtopic,
-        icon: '📚'
+        icon: ''
       }
 
       return {
@@ -94,10 +86,8 @@ export default function SubtopicProgressScreen({ route, navigation }) {
       }
     })
 
-    // Get list of subtopics we have progress data for
     const existingIds = processedSubtopics.map(st => st.id)
 
-    // Add missing subtopics with zero progress
     const missingSubtopics = tutorSubtopics
       .filter(st => !existingIds.includes(st.id))
       .map(st => ({
@@ -110,25 +100,22 @@ export default function SubtopicProgressScreen({ route, navigation }) {
         subtopic: st.id
       }))
 
-    // Combine and sort by progress (highest first)
     const allSubtopics = [...processedSubtopics, ...missingSubtopics]
       .sort((a, b) => b.progress - a.progress)
 
-    // Update state
     setProgress({
       overall: data.overall || 0,
       subtopics: allSubtopics
     })
   }
 
-  // Helper functions
   const getMasteryText = (level) => {
     const labels = ['Not Started', 'Beginner', 'Developing', 'Competent', 'Proficient', 'Expert']
     return labels[level] || 'Unknown'
   }
 
   const getMasteryColor = (level) => {
-    const colors = ['#9E9E9E', '#F44336', '#FF9800', '#FFEB3B', '#8BC34A', '#4CAF50']
+    const colors = ['#9E9E9E', '#FF5722', '#FF9800', '#FFC107', '#8BC34A', '#4CAF50']
     return colors[level] || '#9E9E9E'
   }
 
@@ -139,17 +126,15 @@ export default function SubtopicProgressScreen({ route, navigation }) {
     })
   }
 
-  // Render loading state
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#4CAF50" />
+        <ActivityIndicator size="large" color="#FE7648" />
         <Text style={styles.loadingText}>Loading progress data...</Text>
       </View>
     )
   }
 
-  // Render error state
   if (error) {
     return (
       <View style={styles.errorContainer}>
@@ -162,7 +147,6 @@ export default function SubtopicProgressScreen({ route, navigation }) {
     )
   }
 
-  // Main render
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -171,7 +155,6 @@ export default function SubtopicProgressScreen({ route, navigation }) {
         </Text>
       </View>
 
-      {/* Overall Progress */}
       <View style={styles.overallContainer}>
         <Text style={styles.overallTitle}>Overall Progress</Text>
 
@@ -193,7 +176,6 @@ export default function SubtopicProgressScreen({ route, navigation }) {
 
       <Text style={styles.sectionTitle}>Subtopics</Text>
 
-      {/* Subtopics List */}
       <FlatList
         data={progress.subtopics}
         keyExtractor={(item) => item.id}
@@ -201,8 +183,7 @@ export default function SubtopicProgressScreen({ route, navigation }) {
         renderItem={({ item }) => (
           <TouchableOpacity
             style={styles.subtopicCard}
-            onPress={() => navigateToSubtopic(item)}
-          >
+            onPress={() => navigateToSubtopic(item)}>
             <View style={styles.subtopicHeader}>
               <Text style={styles.subtopicIcon}>{item.icon}</Text>
               <Text style={styles.subtopicName}>{item.name}</Text>
@@ -210,8 +191,7 @@ export default function SubtopicProgressScreen({ route, navigation }) {
                 style={[
                   styles.masteryBadge,
                   { backgroundColor: getMasteryColor(item.masteryLevel) }
-                ]}
-              >
+                ]}>
                 <Text style={styles.masteryText}>
                   {getMasteryText(item.masteryLevel)}
                 </Text>
@@ -257,8 +237,7 @@ export default function SubtopicProgressScreen({ route, navigation }) {
             </Text>
             <TouchableOpacity
               style={styles.emptyButton}
-              onPress={() => navigation.navigate('TopicSelection', { tutor })}
-            >
+              onPress={() => navigation.navigate('TopicSelection', { tutor })}>
               <Text style={styles.emptyButtonText}>Start Learning</Text>
             </TouchableOpacity>
           </View>
@@ -267,8 +246,7 @@ export default function SubtopicProgressScreen({ route, navigation }) {
 
       <TouchableOpacity
         style={styles.refreshButton}
-        onPress={fetchProgress}
-      >
+        onPress={fetchProgress}>
         <Text style={styles.refreshButtonText}>Refresh Progress</Text>
       </TouchableOpacity>
     </View>
@@ -310,7 +288,7 @@ const styles = StyleSheet.create({
     marginBottom: 20
   },
   retryButton: {
-    backgroundColor: '#2196F3',
+    backgroundColor: '#FE7648',
     paddingVertical: 10,
     paddingHorizontal: 20,
     borderRadius: 8
@@ -321,7 +299,7 @@ const styles = StyleSheet.create({
     fontSize: 16
   },
   header: {
-    backgroundColor: '#4CAF50',
+    backgroundColor: '#FE7648',
     padding: 15,
     alignItems: 'center'
   },
@@ -434,7 +412,7 @@ const styles = StyleSheet.create({
   statValue: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#4CAF50'
+    color: '#FE7648'
   },
   statLabel: {
     fontSize: 12,
@@ -442,7 +420,7 @@ const styles = StyleSheet.create({
   },
   subtopicPrompt: {
     textAlign: 'center',
-    color: '#2196F3',
+    color: '#FE7648',
     marginTop: 10,
     fontSize: 12
   },
@@ -463,7 +441,7 @@ const styles = StyleSheet.create({
     marginBottom: 20
   },
   emptyButton: {
-    backgroundColor: '#4CAF50',
+    backgroundColor: '#FE7648',
     paddingVertical: 10,
     paddingHorizontal: 20,
     borderRadius: 8
@@ -474,7 +452,7 @@ const styles = StyleSheet.create({
     fontSize: 16
   },
   refreshButton: {
-    backgroundColor: '#2196F3',
+    backgroundColor: '#FE7648',
     margin: 15,
     padding: 12,
     borderRadius: 8,

@@ -1,8 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import {
-  View, Text, StyleSheet, FlatList, TouchableOpacity,
-  ActivityIndicator, Alert
-} from 'react-native'
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, Alert } from 'react-native'
 import { useUser } from '../context/UserContext'
 
 const subjects = {

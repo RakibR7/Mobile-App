@@ -36,7 +36,7 @@ const AppNavigator = () => {
   if (loading) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F5F5F5' }}>
-        <ActivityIndicator size="large" color="#4CAF50" />
+        <ActivityIndicator size="large" color="#FE7648" />
         <Text style={{ marginTop: 20, fontSize: 16, color: '#666' }}>Loading profile...</Text>
       </View>
     );
@@ -50,7 +50,7 @@ const AppNavigator = () => {
           initialRouteName="Home"
           screenOptions={{
             headerStyle: {
-              backgroundColor: '#4CAF50',
+              backgroundColor: '#FE7648',
             },
             headerTintColor: '#fff',
             headerTitleStyle: {

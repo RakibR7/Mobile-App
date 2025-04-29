@@ -1,4 +1,3 @@
-// data/SubjectsData.js
 export const subjectsData = {
   biology: {
     name: "Biology",
@@ -22,22 +21,19 @@ export const subjectsData = {
       { id: 'libraries', name: 'Libraries & Modules'}
     ]
   }
-};
+}
 
-// Find a subtopic by its ID within a subject
 export const findSubtopic = (subjectId, subtopicId) => {
   const subject = subjectsData[subjectId];
   if (!subject) return null;
 
   return subject.subtopics.find(st => st.id === subtopicId) || null;
-};
+}
 
-// Get all subtopics for a subject
 export const getSubtopics = (subjectId) => {
   return subjectsData[subjectId]?.subtopics || [];
-};
+}
 
-// Get subject info
 export const getSubject = (subjectId) => {
   return subjectsData[subjectId] || null;
-};
+}

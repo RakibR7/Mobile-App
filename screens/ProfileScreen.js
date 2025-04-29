@@ -1,4 +1,3 @@
-// screens/ProfileScreen.js
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -25,7 +24,6 @@ const ProfileScreen = ({ navigation }) => {
   const [difficulty, setDifficulty] = useState('normal');
   const [loadingSettings, setLoadingSettings] = useState(true);
 
-  // Load saved settings on mount
   useEffect(() => {
     const loadSettings = async () => {
       try {
@@ -48,10 +46,10 @@ const ProfileScreen = ({ navigation }) => {
       } finally {
         setLoadingSettings(false);
       }
-    };
+    }
 
     loadSettings();
-  }, []);
+  }, [])
 
   const handleSignOut = () => {
     Alert.alert(
@@ -68,20 +66,17 @@ const ProfileScreen = ({ navigation }) => {
           style: "destructive"
         }
       ]
-    );
-  };
+    )
+  }
 
   const handleSaveProfile = async () => {
     setLoading(true);
 
     try {
-      // Save settings to AsyncStorage
       await AsyncStorage.setItem('questionDifficulty', difficulty);
       await AsyncStorage.setItem('notifications', notifications.toString());
       await AsyncStorage.setItem('studyReminders', reminders.toString());
 
-      // Here you would implement the API call to update the user profile
-      // For now, let's simulate a delay
       setTimeout(() => {
         setLoading(false);
         setIsEditing(false);
@@ -92,34 +87,47 @@ const ProfileScreen = ({ navigation }) => {
       Alert.alert("Error", "Failed to save settings");
       setLoading(false);
     }
-  };
+  }
 
   const handleDifficultyChange = (newDifficulty) => {
     setDifficulty(newDifficulty);
-  };
-
-  if (loadingSettings) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#4CAF50" />
-        <Text style={styles.loadingText}>Loading settings...</Text>
-      </View>
-    );
   }
 
-  return (
-    <ScrollView style={styles.container}>
-      <View style={styles.header}>
-        <View style={styles.profileInitials}>
-          <Text style={styles.initialsText}>
-            {fullName.split(' ').map(n => n[0]).join('').toUpperCase()}
-          </Text>
-        </View>
-        <Text style={styles.userName}>{fullName}</Text>
-        <Text style={styles.userEmail}>{email}</Text>
-      </View>
+  function renderDifficultyValue() {
+    if (difficulty === 'easy') {
+      return 'Easy (Beginner)';
+    } else if (difficulty === 'normal') {
+      return 'Normal';
+    } else {
+      return 'Hard (Exam-Style)';
+    }
+  }
 
-      {isEditing ? (
+  function renderDifficultyClass() {
+    const baseStyle = [styles.settingValue];
+
+    if (difficulty === 'easy') {
+      baseStyle.push(styles.easyDifficulty);
+    } else if (difficulty === 'normal') {
+      baseStyle.push(styles.normalDifficulty);
+    } else if (difficulty === 'hard') {
+      baseStyle.push(styles.hardDifficulty);
+    }
+
+    return baseStyle;
+  }
+
+  function renderSaveButtonContent() {
+    if (loading) {
+      return <ActivityIndicator size="small" color="#FFFFFF" />;
+    } else {
+      return <Text style={styles.saveButtonText}>Save Changes</Text>;
+    }
+  }
+
+  function renderMainContent() {
+    if (isEditing) {
+      return (
         <View style={styles.editForm}>
           <View style={styles.inputContainer}>
             <Text style={styles.inputLabel}>Full Name</Text>
@@ -152,13 +160,12 @@ const ProfileScreen = ({ navigation }) => {
             <TouchableOpacity
               style={[
                 styles.difficultyButton,
-                difficulty === 'easy' && styles.difficultyButtonActive
+                difficulty === 'easy' ? styles.difficultyButtonActive : null
               ]}
-              onPress={() => handleDifficultyChange('easy')}
-            >
+              onPress={() => handleDifficultyChange('easy')}>
               <Text style={[
                 styles.difficultyButtonText,
-                difficulty === 'easy' && styles.difficultyButtonTextActive
+                difficulty === 'easy' ? styles.difficultyButtonTextActive : null
               ]}>Easy</Text>
               <Text style={styles.difficultyDescription}>Beginner-friendly questions</Text>
             </TouchableOpacity>
@@ -166,13 +173,12 @@ const ProfileScreen = ({ navigation }) => {
             <TouchableOpacity
               style={[
                 styles.difficultyButton,
-                difficulty === 'normal' && styles.difficultyButtonActive
+                difficulty === 'normal' ? styles.difficultyButtonActive : null
               ]}
-              onPress={() => handleDifficultyChange('normal')}
-            >
+              onPress={() => handleDifficultyChange('normal')}>
               <Text style={[
                 styles.difficultyButtonText,
-                difficulty === 'normal' && styles.difficultyButtonTextActive
+                difficulty === 'normal' ? styles.difficultyButtonTextActive : null
               ]}>Normal</Text>
               <Text style={styles.difficultyDescription}>Standard learning questions</Text>
             </TouchableOpacity>
@@ -180,13 +186,12 @@ const ProfileScreen = ({ navigation }) => {
             <TouchableOpacity
               style={[
                 styles.difficultyButton,
-                difficulty === 'hard' && styles.difficultyButtonActive
+                difficulty === 'hard' ? styles.difficultyButtonActive : null
               ]}
-              onPress={() => handleDifficultyChange('hard')}
-            >
+              onPress={() => handleDifficultyChange('hard')}>
               <Text style={[
                 styles.difficultyButtonText,
-                difficulty === 'hard' && styles.difficultyButtonTextActive
+                difficulty === 'hard' ? styles.difficultyButtonTextActive : null
               ]}>Hard</Text>
               <Text style={styles.difficultyDescription}>Exam-style challenging questions</Text>
             </TouchableOpacity>
@@ -201,7 +206,7 @@ const ProfileScreen = ({ navigation }) => {
             <Switch
               value={notifications}
               onValueChange={setNotifications}
-              trackColor={{ false: '#D1D1D1', true: '#4CAF50' }}
+              trackColor={{ false: '#D1D1D1', true: '#FE7648' }}
               thumbColor="#FFFFFF"
             />
           </View>
@@ -211,7 +216,7 @@ const ProfileScreen = ({ navigation }) => {
             <Switch
               value={reminders}
               onValueChange={setReminders}
-              trackColor={{ false: '#D1D1D1', true: '#4CAF50' }}
+              trackColor={{ false: '#D1D1D1', true: '#FE7648' }}
               thumbColor="#FFFFFF"
             />
           </View>
@@ -219,40 +224,29 @@ const ProfileScreen = ({ navigation }) => {
           <View style={styles.actionButtons}>
             <TouchableOpacity
               style={[styles.button, styles.cancelButton]}
-              onPress={() => setIsEditing(false)}
-            >
+              onPress={() => setIsEditing(false)}>
               <Text style={styles.cancelButtonText}>Cancel</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
               style={[styles.button, styles.saveButton]}
               onPress={handleSaveProfile}
-              disabled={loading}
-            >
-              {loading ? (
-                <ActivityIndicator size="small" color="#FFFFFF" />
-              ) : (
-                <Text style={styles.saveButtonText}>Save Changes</Text>
-              )}
+              disabled={loading}>
+              {renderSaveButtonContent()}
             </TouchableOpacity>
           </View>
         </View>
-      ) : (
+      )
+    } else {
+      return (
         <View style={styles.menuContainer}>
           <View style={styles.settingsSummary}>
             <Text style={styles.settingsTitle}>Current Settings</Text>
 
             <View style={styles.settingRow}>
               <Text style={styles.settingLabel}>Question Difficulty:</Text>
-              <Text style={[
-                styles.settingValue,
-                difficulty === 'easy' && styles.easyDifficulty,
-                difficulty === 'normal' && styles.normalDifficulty,
-                difficulty === 'hard' && styles.hardDifficulty,
-              ]}>
-                {difficulty === 'easy' ? 'Easy (Beginner)' :
-                difficulty === 'normal' ? 'Normal' :
-                'Hard (Exam-Style)'}
+              <Text style={renderDifficultyClass()}>
+                {renderDifficultyValue()}
               </Text>
             </View>
 
@@ -269,51 +263,71 @@ const ProfileScreen = ({ navigation }) => {
 
           <TouchableOpacity
             style={styles.menuItem}
-            onPress={() => setIsEditing(true)}
-          >
+            onPress={() => setIsEditing(true)}>
             <Text style={styles.menuItemText}>Edit Profile & Settings</Text>
             <Text style={styles.menuItemIcon}>→</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
             style={styles.menuItem}
-            onPress={() => navigation.navigate('SubtopicProgress', { tutor: 'biology' })}
-          >
+            onPress={() => navigation.navigate('SubtopicProgress', { tutor: 'biology' })}>
             <Text style={styles.menuItemText}>Learning Progress</Text>
             <Text style={styles.menuItemIcon}>→</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
             style={styles.menuItem}
-            onPress={() => Alert.alert('Coming Soon', 'This feature will be available in a future update.')}
-          >
+            onPress={() => Alert.alert('Coming Soon', 'This feature will be available in a future update.')}>
             <Text style={styles.menuItemText}>Settings</Text>
             <Text style={styles.menuItemIcon}>→</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
             style={styles.menuItem}
-            onPress={() => Alert.alert('Coming Soon', 'This feature will be available in a future update.')}
-          >
+            onPress={() => Alert.alert('Coming Soon', 'This feature will be available in a future update.')}>
             <Text style={styles.menuItemText}>Help & Support</Text>
             <Text style={styles.menuItemIcon}>→</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
             style={[styles.menuItem, styles.signOutItem]}
-            onPress={handleSignOut}
-          >
+            onPress={handleSignOut}>
             <Text style={styles.signOutText}>Sign Out</Text>
           </TouchableOpacity>
         </View>
-      )}
+      )
+    }
+  }
+
+  if (loadingSettings) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#FE7648" />
+        <Text style={styles.loadingText}>Loading settings...</Text>
+      </View>
+    )
+  }
+
+  return (
+    <ScrollView style={styles.container}>
+      <View style={styles.header}>
+        <View style={styles.profileInitials}>
+          <Text style={styles.initialsText}>
+            {fullName.split(' ').map(n => n[0]).join('').toUpperCase()}
+          </Text>
+        </View>
+        <Text style={styles.userName}>{fullName}</Text>
+        <Text style={styles.userEmail}>{email}</Text>
+      </View>
+
+      {renderMainContent()}
 
       <View style={styles.versionContainer}>
         <Text style={styles.versionText}>Version 1.0.0</Text>
       </View>
     </ScrollView>
-  );
-};
+  )
+}
 
 const styles = StyleSheet.create({
   container: {
@@ -334,7 +348,7 @@ const styles = StyleSheet.create({
   header: {
     alignItems: 'center',
     paddingVertical: 30,
-    backgroundColor: '#4CAF50',
+    backgroundColor: '#FE7648',
   },
   profileInitials: {
     width: 80,
@@ -398,7 +412,7 @@ const styles = StyleSheet.create({
     color: '#333',
   },
   easyDifficulty: {
-    color: '#4CAF50',
+    color: '#FE7648',
   },
   normalDifficulty: {
     color: '#2196F3',
@@ -494,7 +508,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#F9F9F9',
   },
   difficultyButtonActive: {
-    borderColor: '#4CAF50',
+    borderColor: '#FE7648',
     backgroundColor: '#E8F5E9',
   },
   difficultyButtonText: {
@@ -504,7 +518,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   difficultyButtonTextActive: {
-    color: '#4CAF50',
+    color: '#FE7648',
   },
   difficultyDescription: {
     fontSize: 12,
@@ -542,7 +556,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   saveButton: {
-    backgroundColor: '#4CAF50',
+    backgroundColor: '#FE7648',
     marginLeft: 10,
   },
   saveButtonText: {
@@ -550,6 +564,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
-});
+})
 
 export default ProfileScreen;

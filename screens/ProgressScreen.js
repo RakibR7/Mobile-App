@@ -1,4 +1,3 @@
-// screens/ProgressScreen.js
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView,
@@ -15,7 +14,7 @@ export default function ProgressScreen({ navigation }) {
   const [performanceData, setPerformanceData] = useState({
     flashcards: [],
     quizzes: []
-  });
+  })
   const [stats, setStats] = useState({
     totalFlashcards: 0,
     totalQuizzes: 0,
@@ -24,30 +23,26 @@ export default function ProgressScreen({ navigation }) {
     successRate: 0,
     mostStudiedSubject: '',
     mostStudiedTopic: ''
-  });
+  })
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [])
 
   const fetchData = async () => {
     if (!userId) return;
 
     setLoading(true);
     try {
-      // Get all performance data
       const allData = await getPerformanceData(userId);
-
-      // Separate by activity type
       const flashcardData = allData.filter(item => item.activityType === 'flashcard');
       const quizData = allData.filter(item => item.activityType === 'quiz');
 
       setPerformanceData({
         flashcards: flashcardData,
         quizzes: quizData
-      });
+      })
 
-      // Calculate overall stats
       calculateStats(allData);
 
     } catch (error) {
@@ -55,7 +50,7 @@ export default function ProgressScreen({ navigation }) {
     } finally {
       setLoading(false);
     }
-  };
+  }
 
   const calculateStats = (data) => {
     if (!data || data.length === 0) {
@@ -67,38 +62,31 @@ export default function ProgressScreen({ navigation }) {
         successRate: 0,
         mostStudiedSubject: 'None',
         mostStudiedTopic: 'None'
-      });
+      })
       return;
     }
 
-    // Count by activity type
     const flashcardCount = data.filter(item => item.activityType === 'flashcard').length;
     const quizCount = data.filter(item => item.activityType === 'quiz').length;
 
-    // Total cards studied and correct answers
     let totalCorrect = 0;
     let totalAttempts = 0;
 
-    // Subject and topic tracking
     const subjectCounts = {};
     const topicCounts = {};
 
-    // Iterate through all data
     data.forEach(item => {
-      // Count subject frequency
       subjectCounts[item.tutor] = (subjectCounts[item.tutor] || 0) + 1;
       topicCounts[item.topic] = (topicCounts[item.topic] || 0) + 1;
 
-      // Add up stats from sessions
       if (item.sessions && item.sessions.length > 0) {
         item.sessions.forEach(session => {
           totalAttempts += session.cardsStudied || 0;
           totalCorrect += session.correctAnswers || 0;
-        });
+        })
       }
-    });
+    })
 
-    // Find most studied subject and topic
     let mostStudiedSubject = 'None';
     let maxSubjectCount = 0;
 
@@ -119,7 +107,6 @@ export default function ProgressScreen({ navigation }) {
       }
     }
 
-    // Calculate success rate
     const successRate = totalAttempts > 0
       ? Math.round((totalCorrect / totalAttempts) * 100)
       : 0;
@@ -132,8 +119,8 @@ export default function ProgressScreen({ navigation }) {
       successRate,
       mostStudiedSubject,
       mostStudiedTopic
-    });
-  };
+    })
+  }
 
   const navigateToActivityHistory = (activityType, tutor = null, topic = null) => {
     if (activityType === 'flashcard') {
@@ -141,22 +128,66 @@ export default function ProgressScreen({ navigation }) {
     } else {
       navigation.navigate('QuizHistory', { tutor, topic });
     }
-  };
+  }
+
+  function renderSubjectsSection() {
+    const subjects = [...new Set([
+      ...performanceData.flashcards.map(item => item.tutor),
+      ...performanceData.quizzes.map(item => item.tutor)
+    ])]
+
+    if (subjects.length > 0) {
+      return (
+        <View style={styles.subjectsSection}>
+          <Text style={styles.sectionTitle}>Subjects Progress</Text>
+
+          {subjects.map((subject, index) => {
+            const flashcardCount = performanceData.flashcards.filter(
+              item => item.tutor === subject
+            ).length;
+
+            const quizCount = performanceData.quizzes.filter(
+              item => item.tutor === subject
+            ).length;
+
+            return (
+              <View key={index} style={styles.subjectCard}>
+                <Text style={styles.subjectName}>
+                  {subject.charAt(0).toUpperCase() + subject.slice(1)}
+                </Text>
+
+                <View style={styles.subjectStats}>
+                  <TouchableOpacity
+                    style={styles.subjectStat}
+                    onPress={() => navigateToActivityHistory('flashcard', subject)}>
+                    <Text style={styles.subjectStatValue}>{flashcardCount}</Text>
+                    <Text style={styles.subjectStatLabel}>Flashcard Sets</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={styles.subjectStat}
+                    onPress={() => navigateToActivityHistory('quiz', subject)}>
+                    <Text style={styles.subjectStatValue}>{quizCount}</Text>
+                    <Text style={styles.subjectStatLabel}>Quizzes</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )
+          })}
+        </View>
+      )
+    }
+    return null;
+  }
 
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#4CAF50" />
+        <ActivityIndicator size="large" color="#FE7648" />
         <Text style={styles.loadingText}>Loading your progress data...</Text>
       </View>
-    );
+    )
   }
-
-  // Get subjects from performance data
-  const subjects = [...new Set([
-    ...performanceData.flashcards.map(item => item.tutor),
-    ...performanceData.quizzes.map(item => item.tutor)
-  ])];
 
   return (
     <ScrollView style={styles.container}>
@@ -214,74 +245,29 @@ export default function ProgressScreen({ navigation }) {
         <View style={styles.activityButtons}>
           <TouchableOpacity
             style={[styles.activityButton, styles.flashcardButton]}
-            onPress={() => navigateToActivityHistory('flashcard')}
-          >
+            onPress={() => navigateToActivityHistory('flashcard')}>
             <Text style={styles.activityButtonText}>Flashcards</Text>
             <Text style={styles.activityCount}>{stats.totalFlashcards} sessions</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
             style={[styles.activityButton, styles.quizButton]}
-            onPress={() => navigateToActivityHistory('quiz')}
-          >
+            onPress={() => navigateToActivityHistory('quiz')}>
             <Text style={styles.activityButtonText}>Quizzes</Text>
             <Text style={styles.activityCount}>{stats.totalQuizzes} sessions</Text>
           </TouchableOpacity>
         </View>
       </View>
 
-      {subjects.length > 0 && (
-        <View style={styles.subjectsSection}>
-          <Text style={styles.sectionTitle}>Subjects Progress</Text>
-
-          {subjects.map((subject, index) => {
-            // Count activities by subject
-            const flashcardCount = performanceData.flashcards.filter(
-              item => item.tutor === subject
-            ).length;
-
-            const quizCount = performanceData.quizzes.filter(
-              item => item.tutor === subject
-            ).length;
-
-            return (
-              <View key={index} style={styles.subjectCard}>
-                <Text style={styles.subjectName}>
-                  {subject.charAt(0).toUpperCase() + subject.slice(1)}
-                </Text>
-
-                <View style={styles.subjectStats}>
-                  <TouchableOpacity
-                    style={styles.subjectStat}
-                    onPress={() => navigateToActivityHistory('flashcard', subject)}
-                  >
-                    <Text style={styles.subjectStatValue}>{flashcardCount}</Text>
-                    <Text style={styles.subjectStatLabel}>Flashcard Sets</Text>
-                  </TouchableOpacity>
-
-// screens/ProgressScreen.js (continued)
-                  <TouchableOpacity
-                    style={styles.subjectStat}
-                    onPress={() => navigateToActivityHistory('quiz', subject)}
-                  >
-                    <Text style={styles.subjectStatValue}>{quizCount}</Text>
-                    <Text style={styles.subjectStatLabel}>Quizzes</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            );
-          })}
-        </View>
-      )}
+      {renderSubjectsSection()}
 
       <TouchableOpacity
         style={styles.refreshButton}
-        onPress={fetchData}
-      >
+        onPress={fetchData}>
         <Text style={styles.refreshButtonText}>Refresh Data</Text>
       </TouchableOpacity>
     </ScrollView>
-  );
+  )
 }
 
 const styles = StyleSheet.create({
@@ -301,7 +287,7 @@ const styles = StyleSheet.create({
     color: '#333',
   },
   header: {
-    backgroundColor: '#4CAF50',
+    backgroundColor: '#FE7648',
     padding: 20,
     alignItems: 'center',
   },
@@ -340,7 +326,7 @@ const styles = StyleSheet.create({
   statValue: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#4CAF50',
+    color: '#FE7648',
   },
   statLabel: {
     fontSize: 14,
@@ -437,7 +423,7 @@ const styles = StyleSheet.create({
   subjectStatValue: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#4CAF50',
+    color: '#FE7648',
   },
   subjectStatLabel: {
     fontSize: 12,
@@ -456,4 +442,4 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     fontSize: 16,
   }
-});
+}

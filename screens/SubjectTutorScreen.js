@@ -1,4 +1,3 @@
-// screens/SubjectTutorScreen.js
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView,
@@ -23,27 +22,26 @@ export default function SubjectTutorScreen({ navigation }) {
       name: 'Python Tutor',
       model: 'ft:gpt-3.5-turbo-0125:personal:dr1-csv6-shortened-3381:B0DlvD7p'
     }
-  ];
+  ]
 
-  // Load recent conversations for each tutor
   const loadRecentConversations = async () => {
     const recentConvs = {};
 
     for (const subject of subjects) {
       try {
         const conversations = await syncConversations(subject.id);
-        recentConvs[subject.id] = conversations.slice(0, 3); // Get 3 most recent
+        recentConvs[subject.id] = conversations.slice(0, 3);
       } catch (error) {
         console.error(`Error loading conversations for ${subject.id}:`, error);
       }
     }
 
     setRecentConversations(recentConvs);
-  };
+  }
 
   useEffect(() => {
     loadRecentConversations();
-  }, []);
+  }, [])
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -52,35 +50,33 @@ export default function SubjectTutorScreen({ navigation }) {
     } finally {
       setRefreshing(false);
     }
-  };
+  }
 
   const handleSelectSubject = async (subject) => {
     setLoading(true);
     try {
-      // Create a new conversation for the selected subject
       const newConversation = await createConversation(subject.name, subject.model, subject.id);
 
-      // Navigate to the Chat screen with the conversation details
       navigation.navigate('Chat', {
         conversationId: newConversation._id,
         tutor: subject.id,
         selectedModel: subject.model
-      });
+      })
     } catch (error) {
       console.error('Error creating conversation for subject:', error);
       alert('Failed to create conversation. Please try again.');
     } finally {
       setLoading(false);
     }
-  };
+  }
 
   const handleContinueConversation = (conversation, subject) => {
     navigation.navigate('Chat', {
       conversationId: conversation._id,
       tutor: subject.id,
       selectedModel: subject.model || conversation.model
-    });
-  };
+    })
+  }
 
   return (
     <ScrollView
@@ -89,11 +85,10 @@ export default function SubjectTutorScreen({ navigation }) {
         <RefreshControl
           refreshing={refreshing}
           onRefresh={onRefresh}
-          colors={['#4CAF50']}
-          tintColor="#4CAF50"
+          colors={['#FE7648']}
+          tintColor="#FE7648"
         />
-      }
-    >
+      }>
       <Text style={styles.title}>Select a Subject Tutor</Text>
 
       {loading && (
@@ -112,8 +107,7 @@ export default function SubjectTutorScreen({ navigation }) {
               <TouchableOpacity
                 style={[styles.button, styles.chatButton]}
                 onPress={() => handleSelectSubject(subject)}
-                disabled={loading}
-              >
+                disabled={loading}>
                 <Text style={styles.buttonText}>Chat</Text>
                 <Text style={styles.buttonSubtext}>Ask Questions</Text>
               </TouchableOpacity>
@@ -123,26 +117,24 @@ export default function SubjectTutorScreen({ navigation }) {
                 onPress={() => navigation.navigate('TopicSelection', {
                   tutor: subject.id
                 })}
-                disabled={loading}
-              >
+                disabled={loading}>
                 <Text style={styles.buttonText}>Practice</Text>
                 <Text style={styles.buttonSubtext}>Test Your Knowledge</Text>
               </TouchableOpacity>
             </View>
 
-            {/* Add Progress button */}
+            {}
             <TouchableOpacity
               style={[styles.button, styles.progressButton]}
               onPress={() => navigation.navigate('SubtopicProgress', {
                 tutor: subject.id
               })}
-              disabled={loading}
-            >
+              disabled={loading}>
               <Text style={styles.buttonText}>Progress</Text>
               <Text style={styles.buttonSubtext}>View Topic Mastery</Text>
             </TouchableOpacity>
 
-            {/* Display recent conversations for this subject */}
+            {}
             {recentConversations[subject.id]?.length > 0 && (
               <View style={styles.recentConversations}>
                 <Text style={styles.recentTitle}>Recent Conversations:</Text>
@@ -151,8 +143,7 @@ export default function SubjectTutorScreen({ navigation }) {
                     key={conv._id}
                     style={styles.conversationItem}
                     onPress={() => handleContinueConversation(conv, subject)}
-                    disabled={loading}
-                  >
+                    disabled={loading}>
                     <Text style={styles.conversationTitle}>
                       {conv.title || 'Untitled Conversation'}
                     </Text>
@@ -167,7 +158,7 @@ export default function SubjectTutorScreen({ navigation }) {
         ))}
       </View>
     </ScrollView>
-  );
+  )
 }
 
 const styles = StyleSheet.create({
@@ -210,7 +201,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   chatButton: {
-    backgroundColor: '#4CAF50',
+    backgroundColor: '#FE7648',
     width: '48%',
   },
   exerciseButton: {
@@ -277,4 +268,4 @@ const styles = StyleSheet.create({
     marginTop: 10,
     fontSize: 16,
   }
-});
+})

@@ -8,9 +8,8 @@ export default function AboutScreen() {
         <Text style={styles.title}>About Mentor AI</Text>
         
         <Text style={styles.paragraph}>
-          Mentor AI is an intelligent tutoring platform designed to provide personalized learning
-          experiences across various subjects. Our AI tutors are specially trained to understand
-          the nuances of their subject areas and adapt their teaching methods to your needs.
+          AI Mentor is an intelligent tutoring platform designed with personalized learning
+          experiences across two subjects. We have Biology and Python tutors to help students.
         </Text>
         
         <Text style={styles.sectionTitle}>Our Tutors</Text>

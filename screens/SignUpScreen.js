@@ -1,4 +1,3 @@
-// screens/SignUpScreen.js
 import React, { useState } from 'react';
 import {
   View,
@@ -26,12 +25,10 @@ const SignUpScreen = ({ navigation }) => {
   const validateForm = () => {
     const newErrors = {};
 
-    // Validate name
     if (!fullName.trim()) {
       newErrors.fullName = 'Name is required';
     }
 
-    // Validate email
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!email.trim()) {
       newErrors.email = 'Email is required';
@@ -39,38 +36,34 @@ const SignUpScreen = ({ navigation }) => {
       newErrors.email = 'Please enter a valid email';
     }
 
-    // Validate password
     if (!password) {
       newErrors.password = 'Password is required';
     } else if (password.length < 6) {
       newErrors.password = 'Password must be at least 6 characters';
     }
 
-    // Validate confirm password
     if (password !== confirmPassword) {
       newErrors.confirmPassword = 'Passwords do not match';
     }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
-  };
+  }
 
   const handleSignUp = async () => {
     if (!validateForm()) return;
 
     try {
       await signUp(email, password, fullName);
-      // Navigation to main app will be handled by App.js based on auth state
     } catch (error) {
       Alert.alert('Registration Failed', error.message);
     }
-  };
+  }
 
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={styles.container}
-    >
+      style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContainer}>
         <View style={styles.logoContainer}>
           <Text style={styles.logoText}>AI Mentor</Text>
@@ -127,17 +120,12 @@ const SignUpScreen = ({ navigation }) => {
             />
             {errors.confirmPassword && <Text style={styles.errorText}>{errors.confirmPassword}</Text>}
           </View>
-
           <TouchableOpacity
             style={styles.signUpButton}
             onPress={handleSignUp}
-            disabled={loading}
-          >
-            {loading ? (
-              <ActivityIndicator color="#FFFFFF" size="small" />
-            ) : (
-              <Text style={styles.signUpButtonText}>Sign Up</Text>
-            )}
+            disabled={loading}>
+            {loading && <ActivityIndicator color="#FFFFFF" size="small" />}
+            {!loading && <Text style={styles.signUpButtonText}>Sign Up</Text>}
           </TouchableOpacity>
         </View>
 
@@ -149,8 +137,8 @@ const SignUpScreen = ({ navigation }) => {
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
-  );
-};
+  )
+}
 
 const styles = StyleSheet.create({
   container: {
@@ -169,13 +157,13 @@ const styles = StyleSheet.create({
   logoText: {
     fontSize: 36,
     fontWeight: 'bold',
-    color: '#4CAF50',
+    color: '#FE7648',
     marginBottom: 20,
   },
   title: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#4CAF50',
+    color: '#FE7648',
     marginBottom: 10,
   },
   subtitle: {
@@ -217,7 +205,7 @@ const styles = StyleSheet.create({
     marginTop: 5,
   },
   signUpButton: {
-    backgroundColor: '#4CAF50',
+    backgroundColor: '#FE7648',
     height: 50,
     borderRadius: 8,
     justifyContent: 'center',
@@ -239,11 +227,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   loginLink: {
-    color: '#4CAF50',
+    color: '#FE7648',
     fontSize: 14,
     fontWeight: '600',
     marginLeft: 5,
   },
-});
+})
 
 export default SignUpScreen;

@@ -1,4 +1,3 @@
-// screens/HomeScreen.js
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ImageBackground } from 'react-native';
 import { useAuth } from '../context/AuthContext';
@@ -9,8 +8,7 @@ export default function HomeScreen({ navigation }) {
   return (
     <ImageBackground
       source={require('../assets/ocean.jpg')}
-      style={styles.backgroundImage}
-    >
+      style={styles.backgroundImage}>
       <View style={styles.container}>
         <View style={styles.welcomeSection}>
           <Text style={styles.greeting}>Welcome, {user?.fullName || 'Learner'}</Text>
@@ -25,21 +23,19 @@ export default function HomeScreen({ navigation }) {
         <View style={styles.buttonContainer}>
           <TouchableOpacity
             style={styles.button}
-            onPress={() => navigation.navigate('SubjectTutor')}
-          >
+            onPress={() => navigation.navigate('SubjectTutor')}>
             <Text style={styles.buttonText}>Explore Tutors</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
             style={[styles.button, styles.secondaryButton]}
-            onPress={() => navigation.navigate('Profile')}
-          >
+            onPress={() => navigation.navigate('Profile')}>
             <Text style={styles.buttonText}>My Profile</Text>
           </TouchableOpacity>
         </View>
       </View>
     </ImageBackground>
-  );
+  )
 }
 
 const styles = StyleSheet.create({
@@ -53,7 +49,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     padding: 20,
-    backgroundColor: 'rgba(0,0,0,0.3)', // Semi-transparent overlay
+    backgroundColor: 'rgba(0,0,0,0.3)',
   },
   welcomeSection: {
     position: 'absolute',
@@ -99,7 +95,7 @@ const styles = StyleSheet.create({
     maxWidth: 300,
   },
   button: {
-    backgroundColor: '#4CAF50',
+    backgroundColor: '#FE7648',
     paddingVertical: 12,
     paddingHorizontal: 24,
     borderRadius: 5,
@@ -114,4 +110,4 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '500',
   },
-});
+})

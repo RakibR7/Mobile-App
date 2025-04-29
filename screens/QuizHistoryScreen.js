@@ -1,4 +1,3 @@
-// screens/QuizHistoryScreen.js
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, FlatList,
@@ -22,18 +21,17 @@ export default function QuizHistoryScreen({ route, navigation }) {
     accuracy: 0,
     totalTime: 0,
     averageScore: 0
-  });
+  })
 
-  // Debug information
   const [debugInfo, setDebugInfo] = useState({
     requestParams: {},
     responseData: null,
     error: null
-  });
+  })
 
   useEffect(() => {
     fetchHistory();
-  }, []);
+  }, [])
 
   const fetchHistory = async () => {
     if (!userId) {
@@ -45,7 +43,6 @@ export default function QuizHistoryScreen({ route, navigation }) {
     setLoading(true);
     setError(null);
 
-    // Store debug information
     const requestParams = {
       userId,
       tutor,
@@ -55,42 +52,36 @@ export default function QuizHistoryScreen({ route, navigation }) {
     setDebugInfo(prev => ({ ...prev, requestParams }));
 
     try {
-      // Try with regular topic parameter
       let data = await getPerformanceData(
         userId,
         tutor,
         topic,
         'quiz'
-      );
+      )
 
       console.log(`Found ${data?.length || 0} quiz history records with specific topic`);
 
-      // If we get no results, try with a more general search without the topic
       if (!data || data.length === 0) {
         console.log('No records found with specific topic, trying broader search');
         data = await getPerformanceData(
           userId,
           tutor,
-          null, // Try without topic filter
+          null,
           'quiz'
-        );
+        )
         console.log(`Found ${data?.length || 0} quiz history records with broader search`);
       }
 
-      // Store response data for debugging
       setDebugInfo(prev => ({ ...prev, responseData: data }));
 
       if (!Array.isArray(data)) {
         throw new Error("Invalid data format received from server");
       }
 
-      // Filter results client-side if we have topic information
       let filteredData = data;
       if (topic && data.length > 0) {
-        // We might need to match topics in different formats
         const normalizedTopic = topic.toLowerCase();
         filteredData = data.filter(session => {
-          // Check in multiple possible locations/formats
           const sessionTopic = (session.topic || '').toLowerCase();
           const sessionSubtopic = (session.subtopic || '').toLowerCase();
 
@@ -98,14 +89,13 @@ export default function QuizHistoryScreen({ route, navigation }) {
                  normalizedTopic.includes(sessionTopic) ||
                  sessionSubtopic.includes(normalizedTopic) ||
                  normalizedTopic.includes(sessionSubtopic);
-        });
+        })
 
         console.log(`Filtered to ${filteredData.length} relevant records`);
       }
 
       setSessions(filteredData);
 
-      // Calculate overall stats
       let totalQuestions = 0;
       let totalCorrect = 0;
       let totalTime = 0;
@@ -115,19 +105,17 @@ export default function QuizHistoryScreen({ route, navigation }) {
         totalQuizzes++;
 
         if (session.sessionData) {
-          // Direct sessionData format
           totalQuestions += session.sessionData.cardsStudied || 0;
           totalCorrect += session.sessionData.correctAnswers || 0;
           totalTime += session.sessionData.timeSpent || 0;
         } else if (session.sessions && Array.isArray(session.sessions)) {
-          // Nested sessions format
           session.sessions.forEach(s => {
             totalQuestions += s.cardsStudied || 0;
             totalCorrect += s.correctAnswers || 0;
             totalTime += s.timeSpent || 0;
-          });
+          })
         }
-      });
+      })
 
       setStats({
         totalQuizzes,
@@ -146,12 +134,12 @@ export default function QuizHistoryScreen({ route, navigation }) {
       setLoading(false);
       setRefreshing(false);
     }
-  };
+  }
 
   const onRefresh = () => {
     setRefreshing(true);
     fetchHistory();
-  };
+  }
 
   const formatTime = (seconds) => {
     if (!seconds || isNaN(seconds)) return '0m 0s';
@@ -159,7 +147,7 @@ export default function QuizHistoryScreen({ route, navigation }) {
     const minutes = Math.floor(seconds / 60);
     const remainingSeconds = Math.floor(seconds % 60);
     return `${minutes}m ${remainingSeconds}s`;
-  };
+  }
 
   const formatDate = (dateString) => {
     if (!dateString) return 'Unknown date';
@@ -170,13 +158,13 @@ export default function QuizHistoryScreen({ route, navigation }) {
     } catch (e) {
       return 'Invalid date';
     }
-  };
+  }
 
   const getScoreColor = (percentage) => {
-    if (percentage >= 80) return '#4CAF50'; // Green
-    if (percentage >= 60) return '#FF9800'; // Orange
-    return '#F44336'; // Red
-  };
+    if (percentage >= 80) return '#FE7648';
+    if (percentage >= 60) return '#FF9800';
+    return '#F44336';
+  }
 
   const showDebugInfo = () => {
     Alert.alert(
@@ -185,16 +173,121 @@ export default function QuizHistoryScreen({ route, navigation }) {
       `Response: ${JSON.stringify(debugInfo.responseData)}\n\n` +
       `Error: ${debugInfo.error || 'None'}`,
       [{ text: 'OK' }]
-    );
-  };
+    )
+  }
+
+  function renderContent() {
+    if (sessions.length > 0) {
+      return (
+        <>
+          <Text style={styles.sectionTitle}>Quiz Sessions</Text>
+          {sessions.map((item, index) => {
+            let sessionQuestions = 0;
+            let sessionCorrect = 0;
+            let sessionTime = 0;
+
+            if (item.sessionData) {
+              sessionQuestions = item.sessionData.cardsStudied || 0;
+              sessionCorrect = item.sessionData.correctAnswers || 0;
+              sessionTime = item.sessionData.timeSpent || 0;
+            } else if (item.sessions && Array.isArray(item.sessions) && item.sessions.length > 0) {
+              item.sessions.forEach(s => {
+                sessionQuestions += s.cardsStudied || 0;
+                sessionCorrect += s.correctAnswers || 0;
+                sessionTime += s.timeSpent || 0;
+              })
+            }
+
+            const accuracy = sessionQuestions > 0 ? Math.round((sessionCorrect / sessionQuestions) * 100) : 0;
+
+            return (
+              <View key={item._id || index} style={styles.sessionCard}>
+                <View style={styles.sessionHeader}>
+                  <Text style={styles.sessionDate}>
+                    {formatDate(item.createdAt || new Date())}
+                  </Text>
+                  <View style={[
+                    styles.scoreTag,
+                    {backgroundColor: getScoreColor(accuracy)}
+                  ]}>
+                    <Text style={styles.scoreText}>{accuracy}%</Text>
+                  </View>
+                </View>
+
+                <Text style={styles.sessionTopic}>
+                  {item.topic || item.subtopic || 'Unknown Topic'}
+                </Text>
+
+                <View style={styles.sessionStats}>
+                  <View style={styles.sessionStat}>
+                    <Text style={styles.sessionStatValue}>{sessionQuestions}</Text>
+                    <Text style={styles.sessionStatLabel}>Questions</Text>
+                  </View>
+
+                  <View style={styles.sessionStat}>
+                    <Text style={styles.sessionStatValue}>{sessionCorrect}</Text>
+                    <Text style={styles.sessionStatLabel}>Correct</Text>
+                  </View>
+
+                  <View style={styles.sessionStat}>
+                    <Text style={styles.sessionStatValue}>{formatTime(sessionTime)}</Text>
+                    <Text style={styles.sessionStatLabel}>Time</Text>
+                  </View>
+                </View>
+
+                <View style={styles.sessionProgressContainer}>
+                  <View style={styles.progressBackground}>
+                    <View
+                      style={[
+                        styles.progressFill,
+                        {
+                          width: `${accuracy}%`,
+                          backgroundColor: getScoreColor(accuracy)
+                        }
+                      ]}
+                    />
+                  </View>
+                </View>
+              </View>
+            )
+          })}
+        </>
+      )
+    } else {
+      return (
+        <View style={styles.emptyContainer}>
+          <Text style={styles.emptyMessage}>
+            No quiz history found for this topic.
+          </Text>
+          <Text style={styles.emptySubtext}>
+            Complete a quiz to see your performance here.
+          </Text>
+        </View>
+      )
+    }
+  }
+
+  function renderPracticeButton() {
+    if (sessions.length > 0) {
+      return (
+        <TouchableOpacity
+          style={styles.practiceButton}
+          onPress={() => navigation.navigate('TopicSelection', { tutor, preSelectedTopic: topic })}
+        >
+          <Text style={styles.practiceButtonText}>Practice More</Text>
+        </TouchableOpacity>
+      )
+    }
+    return null;
+  }
 
   if (loading && !refreshing) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#4CAF50" />
+        <ActivityIndicator size="large" color="#FE7648" />
         <Text style={styles.loadingText}>Loading quiz history...</Text>
       </View>
-    );
+    )
   }
 
   return (
@@ -204,11 +297,9 @@ export default function QuizHistoryScreen({ route, navigation }) {
         <RefreshControl
           refreshing={refreshing}
           onRefresh={onRefresh}
-          colors={['#4CAF50']}
-          tintColor="#4CAF50"
-        />
-      }
-    >
+          colors={['#FE7648']}
+          tintColor="#FE7648"/>
+      }>
       <View style={styles.headerRow}>
         <Text style={styles.title}>Quiz History</Text>
         <TouchableOpacity onPress={showDebugInfo} style={styles.debugButton}>
@@ -277,113 +368,17 @@ export default function QuizHistoryScreen({ route, navigation }) {
         </View>
       )}
 
-      {sessions.length > 0 ? (
-        <>
-          <Text style={styles.sectionTitle}>Quiz Sessions</Text>
-
-          {sessions.map((item, index) => {
-            // Calculate session stats
-            let sessionQuestions = 0;
-            let sessionCorrect = 0;
-            let sessionTime = 0;
-
-            // Handle different data formats
-            if (item.sessionData) {
-              // Direct format
-              sessionQuestions = item.sessionData.cardsStudied || 0;
-              sessionCorrect = item.sessionData.correctAnswers || 0;
-              sessionTime = item.sessionData.timeSpent || 0;
-            } else if (item.sessions && Array.isArray(item.sessions) && item.sessions.length > 0) {
-              // Nested sessions format
-              item.sessions.forEach(s => {
-                sessionQuestions += s.cardsStudied || 0;
-                sessionCorrect += s.correctAnswers || 0;
-                sessionTime += s.timeSpent || 0;
-              });
-            }
-
-            const accuracy = sessionQuestions > 0 ? Math.round((sessionCorrect / sessionQuestions) * 100) : 0;
-
-            return (
-              <View key={item._id || index} style={styles.sessionCard}>
-                <View style={styles.sessionHeader}>
-                  <Text style={styles.sessionDate}>
-                    {formatDate(item.createdAt || new Date())}
-                  </Text>
-                  <View style={[
-                    styles.scoreTag,
-                    {backgroundColor: getScoreColor(accuracy)}
-                  ]}>
-                    <Text style={styles.scoreText}>{accuracy}%</Text>
-                  </View>
-                </View>
-
-                <Text style={styles.sessionTopic}>
-                  {item.topic || item.subtopic || 'Unknown Topic'}
-                </Text>
-
-                <View style={styles.sessionStats}>
-                  <View style={styles.sessionStat}>
-                    <Text style={styles.sessionStatValue}>{sessionQuestions}</Text>
-                    <Text style={styles.sessionStatLabel}>Questions</Text>
-                  </View>
-
-                  <View style={styles.sessionStat}>
-                    <Text style={styles.sessionStatValue}>{sessionCorrect}</Text>
-                    <Text style={styles.sessionStatLabel}>Correct</Text>
-                  </View>
-
-                  <View style={styles.sessionStat}>
-                    <Text style={styles.sessionStatValue}>{formatTime(sessionTime)}</Text>
-                    <Text style={styles.sessionStatLabel}>Time</Text>
-                  </View>
-                </View>
-
-                <View style={styles.sessionProgressContainer}>
-                  <View style={styles.progressBackground}>
-                    <View
-                      style={[
-                        styles.progressFill,
-                        {
-                          width: `${accuracy}%`,
-                          backgroundColor: getScoreColor(accuracy)
-                        }
-                      ]}
-                    />
-                  </View>
-                </View>
-              </View>
-            );
-          })}
-        </>
-      ) : (
-        <View style={styles.emptyContainer}>
-          <Text style={styles.emptyMessage}>
-            No quiz history found for this topic.
-          </Text>
-          <Text style={styles.emptySubtext}>
-            Complete a quiz to see your performance here.
-          </Text>
-        </View>
-      )}
+      {renderContent()}
 
       <TouchableOpacity
         style={styles.backButton}
-        onPress={() => navigation.goBack()}
-      >
+        onPress={() => navigation.goBack()}>
         <Text style={styles.backButtonText}>Go Back</Text>
       </TouchableOpacity>
 
-      {sessions.length > 0 && (
-        <TouchableOpacity
-          style={styles.practiceButton}
-          onPress={() => navigation.navigate('TopicSelection', { tutor, preSelectedTopic: topic })}
-        >
-          <Text style={styles.practiceButtonText}>Practice More</Text>
-        </TouchableOpacity>
-      )}
+      {renderPracticeButton()}
     </ScrollView>
-  );
+  )
 }
 
 const styles = StyleSheet.create({
@@ -442,7 +437,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   retryButton: {
-    backgroundColor: '#4CAF50',
+    backgroundColor: '#FE7648',
     paddingVertical: 8,
     paddingHorizontal: 15,
     borderRadius: 5,
@@ -500,7 +495,7 @@ const styles = StyleSheet.create({
   statValue: {
     fontSize: 22,
     fontWeight: 'bold',
-    color: '#4CAF50',
+    color: '#FE7648',
   },
   statLabel: {
     fontSize: 14,
@@ -579,7 +574,7 @@ const styles = StyleSheet.create({
   sessionStatValue: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#4CAF50',
+    color: '#FE7648',
   },
   sessionStatLabel: {
     fontSize: 12,
@@ -603,7 +598,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   practiceButton: {
-    backgroundColor: '#4CAF50',
+    backgroundColor: '#FE7648',
     paddingVertical: 12,
     paddingHorizontal: 20,
     borderRadius: 5,
@@ -615,4 +610,4 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
   }
-});
+})

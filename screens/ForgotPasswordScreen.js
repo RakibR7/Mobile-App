@@ -1,4 +1,3 @@
-// screens/ForgotPasswordScreen.js
 import React, { useState } from 'react';
 import {
   View,
@@ -22,8 +21,6 @@ const ForgotPasswordScreen = ({ navigation }) => {
 
   const validateForm = () => {
     const newErrors = {};
-
-    // Validate email
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!email.trim()) {
       newErrors.email = 'Email is required';
@@ -33,7 +30,7 @@ const ForgotPasswordScreen = ({ navigation }) => {
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
-  };
+  }
 
   const handleResetPassword = async () => {
     if (!validateForm()) return;
@@ -44,77 +41,81 @@ const ForgotPasswordScreen = ({ navigation }) => {
     } catch (error) {
       Alert.alert('Error', error.message);
     }
-  };
-
-  if (isSubmitted) {
-    return (
-      <View style={styles.container}>
-        <View style={styles.successContainer}>
-          <Text style={styles.emailIcon}>✉️</Text>
-          <Text style={styles.successTitle}>Check Your Email</Text>
-          <Text style={styles.successText}>
-            We've sent password reset instructions to {email}
-          </Text>
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => navigation.navigate('SignIn')}
-          >
-            <Text style={styles.backButtonText}>Back to Login</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    );
   }
 
-  return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={styles.container}
-    >
-      <View style={styles.contentContainer}>
-        <View style={styles.headerContainer}>
-          <TouchableOpacity
-            onPress={() => navigation.goBack()}
-            style={styles.backIconContainer}
-          >
-            <Text style={styles.backIcon}>← Back</Text>
-          </TouchableOpacity>
-          <Text style={styles.title}>Forgot Password</Text>
-          <Text style={styles.subtitle}>
-            Enter your email and we'll send you a link to reset your password
-          </Text>
-        </View>
+  function renderResetButtonContent() {
+    if (loading) {
+      return <ActivityIndicator color="#FFFFFF" size="small" />;
+    } else {
+      return <Text style={styles.resetButtonText}>Reset Password</Text>;
+    }
+  }
 
-        <View style={styles.formContainer}>
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Email</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Enter your email"
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
-              autoCapitalize="none"
-            />
-            {errors.email && <Text style={styles.errorText}>{errors.email}</Text>}
+  function renderContent() {
+    if (isSubmitted) {
+      return (
+        <View style={styles.container}>
+          <View style={styles.successContainer}>
+            <Text style={styles.emailIcon}>✉️</Text>
+            <Text style={styles.successTitle}>Check Your Email</Text>
+            <Text style={styles.successText}>
+              We've sent password reset instructions to {email}
+            </Text>
+            <TouchableOpacity
+              style={styles.backButton}
+              onPress={() => navigation.navigate('SignIn')}>
+              <Text style={styles.backButtonText}>Back to Login</Text>
+            </TouchableOpacity>
           </View>
-
-          <TouchableOpacity
-            style={styles.resetButton}
-            onPress={handleResetPassword}
-            disabled={loading}
-          >
-            {loading ? (
-              <ActivityIndicator color="#FFFFFF" size="small" />
-            ) : (
-              <Text style={styles.resetButtonText}>Reset Password</Text>
-            )}
-          </TouchableOpacity>
         </View>
-      </View>
-    </KeyboardAvoidingView>
-  );
-};
+      )
+    } else {
+      return (
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.container}>
+          <View style={styles.contentContainer}>
+            <View style={styles.headerContainer}>
+              <TouchableOpacity
+                onPress={() => navigation.goBack()}
+                style={styles.backIconContainer}>
+                <Text style={styles.backIcon}>← Back</Text>
+              </TouchableOpacity>
+              <Text style={styles.title}>Forgot Password</Text>
+              <Text style={styles.subtitle}>
+                Enter your email and we'll send you a link to reset your password
+              </Text>
+            </View>
+
+            <View style={styles.formContainer}>
+              <View style={styles.inputContainer}>
+                <Text style={styles.label}>Email</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Enter your email"
+                  value={email}
+                  onChangeText={setEmail}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                />
+                {errors.email && <Text style={styles.errorText}>{errors.email}</Text>}
+              </View>
+
+              <TouchableOpacity
+                style={styles.resetButton}
+                onPress={handleResetPassword}
+                disabled={loading}>
+                {renderResetButtonContent()}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      )
+    }
+  }
+
+  return renderContent();
+}
 
 const styles = StyleSheet.create({
   container: {
@@ -133,7 +134,7 @@ const styles = StyleSheet.create({
   },
   backIcon: {
     fontSize: 16,
-    color: '#4CAF50',
+    color: '#FE7648',
   },
   title: {
     fontSize: 24,
@@ -180,7 +181,7 @@ const styles = StyleSheet.create({
     marginTop: 5,
   },
   resetButton: {
-    backgroundColor: '#4CAF50',
+    backgroundColor: '#FE7648',
     height: 50,
     borderRadius: 8,
     justifyContent: 'center',
@@ -204,7 +205,7 @@ const styles = StyleSheet.create({
   successTitle: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#4CAF50',
+    color: '#FE7648',
     marginBottom: 10,
   },
   successText: {
@@ -215,7 +216,7 @@ const styles = StyleSheet.create({
     lineHeight: 22,
   },
   backButton: {
-    backgroundColor: '#4CAF50',
+    backgroundColor: '#FE7648',
     paddingVertical: 12,
     paddingHorizontal: 20,
     borderRadius: 8,
@@ -225,6 +226,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
-});
+})
 
 export default ForgotPasswordScreen;

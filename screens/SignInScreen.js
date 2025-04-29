@@ -1,4 +1,3 @@
-// screens/SignInScreen.js (update)
 import React, { useState } from 'react';
 import {
   View,
@@ -24,36 +23,32 @@ const SignInScreen = ({ navigation }) => {
   const validateForm = () => {
     const newErrors = {};
 
-    // Validate email
     if (!email.trim()) {
       newErrors.email = 'Email is required';
     }
 
-    // Validate password
     if (!password) {
       newErrors.password = 'Password is required';
     }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
-  };
+  }
 
   const handleSignIn = async () => {
     if (!validateForm()) return;
 
     try {
       await signIn(email, password);
-      // Navigation to main app will be handled by App.js based on auth state
     } catch (error) {
       Alert.alert('Login Failed', error.message);
     }
-  };
+  }
 
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={styles.container}
-    >
+      style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContainer}>
         <View style={styles.logoContainer}>
           <Text style={styles.logoText}>AI Mentor</Text>
@@ -103,21 +98,15 @@ const SignInScreen = ({ navigation }) => {
                 navigation.navigate('ForgotPassword');
               }
             }}
-            style={styles.forgotPasswordContainer}
-          >
+            style={styles.forgotPasswordContainer}>
             <Text style={styles.forgotPasswordText}>Forgot password?</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
             style={styles.signInButton}
             onPress={handleSignIn}
-            disabled={loading}
-          >
-            {loading ? (
-              <ActivityIndicator color="#FFFFFF" size="small" />
-            ) : (
-              <Text style={styles.signInButtonText}>Log In</Text>
-            )}
+            disabled={loading}>
+            {renderButtonContent()}
           </TouchableOpacity>
         </View>
 
@@ -135,8 +124,16 @@ const SignInScreen = ({ navigation }) => {
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
-  );
-};
+  )
+
+  function renderButtonContent() {
+    if (loading) {
+      return <ActivityIndicator color="#FFFFFF" size="small" />;
+    } else {
+      return <Text style={styles.signInButtonText}>Log In</Text>;
+    }
+  }
+}
 
 const styles = StyleSheet.create({
   container: {
@@ -155,13 +152,13 @@ const styles = StyleSheet.create({
   logoText: {
     fontSize: 36,
     fontWeight: 'bold',
-    color: '#4CAF50',
+    color: '#FE7648',
     marginBottom: 20,
   },
   title: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#4CAF50',
+    color: '#FE7648',
     marginBottom: 10,
   },
   subtitle: {
@@ -207,11 +204,11 @@ const styles = StyleSheet.create({
     marginBottom: 15,
   },
   forgotPasswordText: {
-    color: '#4CAF50',
+    color: '#FE7648',
     fontSize: 14,
   },
   signInButton: {
-    backgroundColor: '#4CAF50',
+    backgroundColor: '#FE7648',
     height: 50,
     borderRadius: 8,
     justifyContent: 'center',
@@ -232,11 +229,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   signUpLink: {
-    color: '#4CAF50',
+    color: '#FE7648',
     fontSize: 14,
     fontWeight: '600',
     marginLeft: 5,
   },
-});
+})
 
 export default SignInScreen;

@@ -22,13 +22,13 @@ export default function ExerciseScreen({ route, navigation }) {
       ];
     }
     return [];
-  };
+  }
 
   const exercises = getExercises();
 
   const handleAnswerChange = (id, text) => {
     setAnswers({...answers, [id]: text});
-  };
+  }
 
   const evaluateAnswers = () => {
     const results = {};
@@ -42,13 +42,13 @@ export default function ExerciseScreen({ route, navigation }) {
         results[ex.id] = {
           correct: false,
           feedback: "Not quite. The correct answer is: " + ex.answer
-        };
+        }
       }
-    });
+    })
 
     setFeedback(results);
     setSubmitted(true);
-  };
+  }
 
   return (
     <ScrollView style={styles.container}>
@@ -84,14 +84,13 @@ export default function ExerciseScreen({ route, navigation }) {
         onPress={submitted ? () => {
           setSubmitted(false);
           setFeedback({});
-        } : evaluateAnswers}
-      >
+        } : evaluateAnswers}>
         <Text style={styles.buttonText}>
           {submitted ? "Try Again" : "Submit Answers"}
         </Text>
       </TouchableOpacity>
     </ScrollView>
-  );
+  )
 }
 
 const styles = StyleSheet.create({
@@ -140,7 +139,7 @@ const styles = StyleSheet.create({
   },
   correctFeedback: {
     backgroundColor: '#e6f7e6',
-    borderColor: '#4CAF50',
+    borderColor: '#FE7648',
     borderWidth: 1,
   },
   incorrectFeedback: {
@@ -152,7 +151,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   submitButton: {
-    backgroundColor: '#4CAF50',
+    backgroundColor: '#FE7648',
     padding: 15,
     borderRadius: 8,
     alignItems: 'center',
@@ -167,4 +166,4 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '500',
   },
-});
+})

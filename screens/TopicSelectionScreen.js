@@ -29,7 +29,7 @@ export default function TopicSelectionScreen({ route, navigation }) {
       ];
     }
     return [];
-  };
+  }
 
   const topics = getTopics();
 
@@ -51,37 +51,35 @@ export default function TopicSelectionScreen({ route, navigation }) {
           tutor,
           topic: topic.id,
           topicName: topic.name
-        });
+        })
         break;
       case 'quiz':
         navigation.navigate('DynamicExercise', {
           tutor,
           topic: topic.id,
           topicName: topic.name
-        });
+        })
         break;
       default:
         Alert.alert('Feature Not Available', 'This feature is coming soon!');
     }
-  };
+  }
 
   const getTutorName = () => {
     return subjectsData[tutor]?.name ||
       (tutor === 'biology' ? 'Biology' :
        tutor === 'python' ? 'Python Programming' :
        tutor.charAt(0).toUpperCase() + tutor.slice(1));
-  };
+  }
 
   return (
     <ImageBackground
       source={require('../assets/blur.jpg')}
-      style={styles.backgroundImage}
-    >
+      style={styles.backgroundImage}>
       <ScrollView
         ref={scrollViewRef}
         style={styles.container}
-        contentContainerStyle={styles.contentContainer}
-      >
+        contentContainerStyle={styles.contentContainer}>
         <Text style={styles.title}>{getTutorName()} Topics</Text>
 
         <View style={styles.topicsContainer}>
@@ -91,8 +89,7 @@ export default function TopicSelectionScreen({ route, navigation }) {
               style={[
                 styles.topicCard,
                 highlightedTopic === topic.id && styles.highlightedTopic
-              ]}
-            >
+              ]}>
               <View style={styles.topicHeader}>
                 <Text style={styles.topicIcon}>{topic.icon}</Text>
                 <Text style={styles.topicName}>{topic.name}</Text>
@@ -101,16 +98,14 @@ export default function TopicSelectionScreen({ route, navigation }) {
               <View style={styles.activitiesContainer}>
                 <TouchableOpacity
                   style={[styles.activityButton, styles.flashcardsButton]}
-                  onPress={() => handleSelectActivity(topic, 'flashcards')}
-                >
+                  onPress={() => handleSelectActivity(topic, 'flashcards')}>
                   <Text style={styles.activityIcon}>🔄</Text>
                   <Text style={styles.activityName}>Flashcards</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
                   style={[styles.activityButton, styles.quizButton]}
-                  onPress={() => handleSelectActivity(topic, 'quiz')}
-                >
+                  onPress={() => handleSelectActivity(topic, 'quiz')}>
                   <Text style={styles.activityIcon}>📝</Text>
                   <Text style={styles.activityName}>Quiz</Text>
                 </TouchableOpacity>
@@ -121,13 +116,12 @@ export default function TopicSelectionScreen({ route, navigation }) {
 
         <TouchableOpacity
           style={styles.progressButton}
-          onPress={() => navigation.navigate('SubtopicProgress', { tutor })}
-        >
+          onPress={() => navigation.navigate('SubtopicProgress', { tutor })}>
           <Text style={styles.progressButtonText}>View My Progress</Text>
         </TouchableOpacity>
       </ScrollView>
     </ImageBackground>
-  );
+  )
 }
 
 const styles = StyleSheet.create({
@@ -170,7 +164,7 @@ const styles = StyleSheet.create({
   highlightedTopic: {
     backgroundColor: 'rgba(76, 175, 80, 0.2)',
     borderWidth: 2,
-    borderColor: '#4CAF50',
+    borderColor: '#FE7648',
   },
   topicHeader: {
     flexDirection: 'row',
@@ -227,4 +221,4 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
   }
-});
+})

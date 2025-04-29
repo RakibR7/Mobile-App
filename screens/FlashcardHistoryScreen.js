@@ -1,180 +1,168 @@
-// screens/FlashcardHistoryScreen.js
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react'
 import {
   View, Text, StyleSheet, TouchableOpacity, FlatList,
   ActivityIndicator, ScrollView, RefreshControl, Alert
-} from 'react-native';
-import { useUser } from '../context/UserContext';
-import { getPerformanceData } from '../services/apiService';
+} from 'react-native'
+import { useUser } from '../context/UserContext'
+import { getPerformanceData } from '../services/apiService'
 
 export default function FlashcardHistoryScreen({ route, navigation }) {
-  const { tutor, topic } = route.params || {};
-  const { userId } = useUser();
+  const { tutor, topic } = route.params || {}
+  const { userId } = useUser()
 
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState(null);
-  const [sessions, setSessions] = useState([]);
+  const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
+  const [error, setError] = useState(null)
+  const [sessions, setSessions] = useState([])
   const [stats, setStats] = useState({
     totalCards: 0,
     totalCorrect: 0,
     accuracy: 0,
     totalTime: 0
-  });
+  })
 
   useEffect(() => {
-    fetchHistory();
-  }, []);
+    fetchHistory()
+  }, [])
 
   const fetchHistory = async () => {
     if (!userId) {
-      setError("User ID not available. Please restart the app.");
-      setLoading(false);
-      return;
+      setError("User ID not available. Please restart the app.")
+      setLoading(false)
+      return
     }
 
-    setLoading(true);
-    setError(null);
+    setLoading(true)
+    setError(null)
 
     try {
-      console.log(`Fetching flashcard history for user ${userId}, tutor ${tutor || 'any'}, topic ${topic || 'any'}`);
+      console.log(`Fetching flashcard history for user ${userId}, tutor ${tutor || 'any'}, topic ${topic || 'any'}`)
 
-      // First try with specific topic
       let data = await getPerformanceData(
         userId,
         tutor,
         topic,
         'flashcard'
-      );
+      )
 
-      console.log(`Found ${data?.length || 0} flashcard history records with specific topic`);
+      console.log(`Found ${data?.length || 0} flashcard history records with specific topic`)
 
-      // If no results with specific topic, try more broadly
       if (!data || data.length === 0) {
-        console.log('No records found with specific topic, trying broader search');
+        console.log('No records found with specific topic, trying broader search')
         data = await getPerformanceData(
           userId,
           tutor,
-          null, // Try without topic filter
+          null,
           'flashcard'
-        );
-        console.log(`Found ${data?.length || 0} flashcard history records with broader search`);
+        )
+        console.log(`Found ${data?.length || 0} flashcard history records with broader search`)
       }
 
       if (!Array.isArray(data)) {
-        throw new Error("Invalid data format received from server");
+        throw new Error("Invalid data format received from server")
       }
 
-      // Process the data to ensure we have the right structure
       const processedSessions = data.map(session => {
-        // Extract session stats from various possible locations
-        let sessionCards = 0;
-        let sessionCorrect = 0;
-        let sessionTime = 0;
+        let sessionCards = 0
+        let sessionCorrect = 0
+        let sessionTime = 0
 
-        // Check all possible locations for session data
         if (session.sessionData) {
-          sessionCards = parseInt(session.sessionData.cardsStudied || 0, 10);
-          sessionCorrect = parseInt(session.sessionData.correctAnswers || 0, 10);
-          sessionTime = parseInt(session.sessionData.timeSpent || 0, 10);
+          sessionCards = parseInt(session.sessionData.cardsStudied || 0, 10)
+          sessionCorrect = parseInt(session.sessionData.correctAnswers || 0, 10)
+          sessionTime = parseInt(session.sessionData.timeSpent || 0, 10)
         }
 
         if (session.sessions && Array.isArray(session.sessions) && session.sessions.length > 0) {
           session.sessions.forEach(s => {
-            sessionCards += parseInt(s.cardsStudied || 0, 10);
-            sessionCorrect += parseInt(s.correctAnswers || 0, 10);
-            sessionTime += parseInt(s.timeSpent || 0, 10);
-          });
+            sessionCards += parseInt(s.cardsStudied || 0, 10)
+            sessionCorrect += parseInt(s.correctAnswers || 0, 10)
+            sessionTime += parseInt(s.timeSpent || 0, 10)
+          })
         }
 
-        // As a last resort, try to count cards
         if (sessionCards === 0 && session.cards && Array.isArray(session.cards)) {
-          sessionCards = session.cards.length;
+          sessionCards = session.cards.length
           session.cards.forEach(card => {
             if (card.correctAttempts && card.correctAttempts > 0) {
-              sessionCorrect++;
+              sessionCorrect++
             }
-          });
+          })
         }
 
-        // Calculate accuracy
-        const accuracy = sessionCards > 0 ? Math.round((sessionCorrect / sessionCards) * 100) : 0;
+        const accuracy = sessionCards > 0 ? Math.round((sessionCorrect / sessionCards) * 100) : 0
 
         return {
           ...session,
-          // Store processed stats in a consistent location
           processedStats: {
             sessionCards,
             sessionCorrect,
             sessionTime,
             accuracy
           }
-        };
-      });
+        }
+      })
 
-      setSessions(processedSessions);
+      setSessions(processedSessions)
 
-      // Calculate overall stats
-      let totalCards = 0;
-      let totalCorrect = 0;
-      let totalTime = 0;
+      let totalCards = 0
+      let totalCorrect = 0
+      let totalTime = 0
 
       processedSessions.forEach(session => {
-        totalCards += session.processedStats.sessionCards;
-        totalCorrect += session.processedStats.sessionCorrect;
-        totalTime += session.processedStats.sessionTime;
-      });
+        totalCards += session.processedStats.sessionCards
+        totalCorrect += session.processedStats.sessionCorrect
+        totalTime += session.processedStats.sessionTime
+      })
 
       setStats({
         totalCards,
         totalCorrect,
         accuracy: totalCards > 0 ? Math.round((totalCorrect / totalCards) * 100) : 0,
         totalTime
-      });
+      })
 
     } catch (error) {
-      console.error('Error fetching flashcard history:', error);
-      setError("Couldn't load history data. " + error.message);
+      console.error('Error fetching flashcard history:', error)
+      setError("Couldn't load history data. " + error.message)
 
-      // Set empty data for safety
-      setSessions([]);
+      setSessions([])
       setStats({
         totalCards: 0,
         totalCorrect: 0,
         accuracy: 0,
         totalTime: 0
-      });
+      })
     } finally {
-      setLoading(false);
-      setRefreshing(false);
+      setLoading(false)
+      setRefreshing(false)
     }
-  };
+  }
 
   const onRefresh = () => {
-    setRefreshing(true);
-    fetchHistory();
-  };
+    setRefreshing(true)
+    fetchHistory()
+  }
 
   const formatTime = (seconds) => {
-    if (!seconds || isNaN(seconds)) return '0m 0s';
+    if (!seconds || isNaN(seconds)) return '0m 0s'
 
-    const minutes = Math.floor(seconds / 60);
-    const remainingSeconds = Math.floor(seconds % 60);
-    return `${minutes}m ${remainingSeconds}s`;
-  };
+    const minutes = Math.floor(seconds / 60)
+    const remainingSeconds = Math.floor(seconds % 60)
+    return `${minutes}m ${remainingSeconds}s`
+  }
 
   const formatDate = (dateString) => {
-    if (!dateString) return 'Unknown date';
+    if (!dateString) return 'Unknown date'
 
     try {
-      const date = new Date(dateString);
-      return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      const date = new Date(dateString)
+      return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     } catch (e) {
-      return 'Invalid date';
+      return 'Invalid date'
     }
-  };
+  }
 
-  // Debug function to view session data structure
   const viewSessionData = (session) => {
     const debugInfo = {
       id: session._id,
@@ -187,52 +175,32 @@ export default function FlashcardHistoryScreen({ route, navigation }) {
       hasCards: !!session.cards,
       cardsCount: session.cards?.length || 0,
       processed: session.processedStats
-    };
+    }
 
     Alert.alert(
       'Session Data',
       JSON.stringify(debugInfo, null, 2),
       [{ text: 'OK' }]
-    );
-  };
-
-  if (loading && !refreshing) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#4CAF50" />
-        <Text style={styles.loadingText}>Loading history data...</Text>
-      </View>
-    );
+    )
   }
 
-  return (
-    <ScrollView
-      style={styles.container}
-      refreshControl={
-        <RefreshControl
-          refreshing={refreshing}
-          onRefresh={onRefresh}
-          colors={['#4CAF50']}
-          tintColor="#4CAF50"
-        />
-      }
-    >
-      <Text style={styles.title}>Flashcard History</Text>
-      <Text style={styles.subtitle}>
-        {tutor ? `Tutor: ${tutor}` : 'All Tutors'}
-        {topic ? ` Topic: ${topic}` : ' All Topics'}
-      </Text>
-
-      {error && (
+  function renderErrorContent() {
+    if (error) {
+      return (
         <View style={styles.errorContainer}>
           <Text style={styles.errorText}>{error}</Text>
           <TouchableOpacity style={styles.retryButton} onPress={fetchHistory}>
             <Text style={styles.retryButtonText}>Retry</Text>
           </TouchableOpacity>
         </View>
-      )}
+      )
+    }
+    return null
+  }
 
-      {!error && (
+  function renderStatsCard() {
+    if (!error) {
+      return (
         <View style={styles.statsCard}>
           <Text style={styles.statsTitle}>Overall Statistics</Text>
 
@@ -260,27 +228,30 @@ export default function FlashcardHistoryScreen({ route, navigation }) {
             </View>
           </View>
         </View>
-      )}
+      )
+    }
+    return null
+  }
 
-      {sessions.length > 0 ? (
+  function renderSessions() {
+    if (sessions.length > 0) {
+      return (
         <>
           <Text style={styles.sectionTitle}>Recent Sessions</Text>
 
           {sessions.map((item, index) => {
-            // Use processedStats structure consistently
             const { sessionCards, sessionCorrect, sessionTime, accuracy } = item.processedStats || {
               sessionCards: 0,
               sessionCorrect: 0,
               sessionTime: 0,
               accuracy: 0
-            };
+            }
 
             return (
               <TouchableOpacity
                 key={item._id || index}
                 style={styles.sessionCard}
-                onLongPress={() => viewSessionData(item)}
-              >
+                onLongPress={() => viewSessionData(item)}>
                 <Text style={styles.sessionDate}>
                   {formatDate(item.createdAt || new Date())}
                 </Text>
@@ -310,10 +281,12 @@ export default function FlashcardHistoryScreen({ route, navigation }) {
                   </View>
                 </View>
               </TouchableOpacity>
-            );
+            )
           })}
         </>
-      ) : (
+      )
+    } else {
+      return (
         <View style={styles.emptyContainer}>
           <Text style={styles.emptyMessage}>
             No flashcard history found for this topic.
@@ -322,29 +295,66 @@ export default function FlashcardHistoryScreen({ route, navigation }) {
             Complete a flashcard session to see your progress here.
           </Text>
         </View>
-      )}
+      )
+    }
+  }
 
-      <TouchableOpacity
-        style={styles.button}
-        onPress={() => navigation.goBack()}
-      >
-        <Text style={styles.buttonText}>Go Back</Text>
-      </TouchableOpacity>
-
-      {topic && (
+  function renderPracticeButton() {
+    if (topic) {
+      return (
         <TouchableOpacity
           style={[styles.button, styles.practiceButton]}
           onPress={() => navigation.navigate('FlashcardsScreen', {
             tutor,
             topic,
             topicName: topic
-          })}
-        >
+          })}>
           <Text style={styles.buttonText}>Practice More</Text>
         </TouchableOpacity>
-      )}
+      )
+    }
+    return null
+  }
+
+  if (loading && !refreshing) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#FE7648" />
+        <Text style={styles.loadingText}>Loading history data...</Text>
+      </View>
+    )
+  }
+
+  return (
+    <ScrollView
+      style={styles.container}
+      refreshControl={
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={onRefresh}
+          colors={['#FE7648']}
+          tintColor="#FE7648"
+        />
+      }>
+      <Text style={styles.title}>Flashcard History</Text>
+      <Text style={styles.subtitle}>
+        {tutor ? `Tutor: ${tutor}` : 'All Tutors'}
+        {topic ? ` Topic: ${topic}` : ' All Topics'}
+      </Text>
+
+      {renderErrorContent()}
+      {renderStatsCard()}
+      {renderSessions()}
+
+      <TouchableOpacity
+        style={styles.button}
+        onPress={() => navigation.goBack()}>
+        <Text style={styles.buttonText}>Go Back</Text>
+      </TouchableOpacity>
+
+      {renderPracticeButton()}
     </ScrollView>
-  );
+  )
 }
 
 const styles = StyleSheet.create({
@@ -389,7 +399,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   retryButton: {
-    backgroundColor: '#4CAF50',
+    backgroundColor: '#FE7648',
     paddingVertical: 8,
     paddingHorizontal: 15,
     borderRadius: 5,
@@ -447,7 +457,7 @@ const styles = StyleSheet.create({
   statValue: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#4CAF50',
+    color: '#FE7648',
   },
   statLabel: {
     fontSize: 14,
@@ -492,14 +502,14 @@ const styles = StyleSheet.create({
   sessionStatValue: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#4CAF50',
+    color: '#FE7648',
   },
   sessionStatLabel: {
     fontSize: 12,
     color: '#666',
   },
   button: {
-    backgroundColor: '#4CAF50',
+    backgroundColor: '#FE7648',
     paddingVertical: 12,
     paddingHorizontal: 20,
     borderRadius: 5,
@@ -516,4 +526,4 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
   }
-});
+})

@@ -1,4 +1,3 @@
-// screens/DynamicExerciseScreen.js
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, TextInput, TouchableOpacity,
@@ -8,7 +7,6 @@ import { useUser } from '../context/UserContext';
 import { updatePerformanceData, getPerformanceData } from '../services/apiService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// Default questions by topic
 const getDefaultQuestions = (topic, tutor) => {
   return [
     {
@@ -26,7 +24,6 @@ const getDefaultQuestions = (topic, tutor) => {
   ];
 };
 
-// Specific questions for biology cells topic
 const getCellsQuestions = () => {
   return [
     {
@@ -65,11 +62,8 @@ export default function DynamicExerciseScreen({ route, navigation }) {
   });
 
   useEffect(() => {
-    // Fetch previous questions when component mounts
     fetchPreviousQuestions();
     setSessionStartTime(Date.now());
-
-    // Cleanup function to save session data when leaving the screen
     return () => {
       if (!showQuizOptions && questions.length > 0 && sessionStats.questionsAttempted > 0) {
         saveSession();
@@ -85,13 +79,11 @@ export default function DynamicExerciseScreen({ route, navigation }) {
       if (userId) {
         try {
           console.log(`Fetching previous questions for user: ${userId}, tutor: ${tutor}, topic: ${topicName || topic || 'any'}`);
-          
-          // Get performance data to extract previous questions
-          // Don't filter by topic initially to see if we get any results
+
           const performanceData = await getPerformanceData(
             userId,
             tutor,
-            null, // Don't filter by topic to get all questions
+            null,
             'quiz'
           );
 
@@ -100,7 +92,6 @@ export default function DynamicExerciseScreen({ route, navigation }) {
           let previousQuestionsFound = [];
 
           if (Array.isArray(performanceData) && performanceData.length > 0) {
-            // Extract questions from all previous quiz sessions
             performanceData.forEach(session => {
               console.log(`Session has ${session.cards?.length || 0} cards`);
               
@@ -110,7 +101,7 @@ export default function DynamicExerciseScreen({ route, navigation }) {
                     previousQuestionsFound.push({
                       id: card.cardId || `q_${previousQuestionsFound.length + 1}`,
                       question: card.question,
-                      answer: card.answer || "" // This might be undefined for some cards
+                      answer: card.answer || ""
                     });
                   }
                 });
@@ -120,9 +111,7 @@ export default function DynamicExerciseScreen({ route, navigation }) {
 
           console.log(`Extracted ${previousQuestionsFound.length} questions from performance data`);
 
-          // If we found questions, remove duplicates
           if (previousQuestionsFound.length > 0) {
-            // Remove duplicates by question text
             const uniqueQuestions = [];
             const questionTexts = new Set();
 
@@ -133,12 +122,12 @@ export default function DynamicExerciseScreen({ route, navigation }) {
               }
             });
 
-            // If we found topics for this specific topic, use them
-            // Otherwise, use all questions we found (better than nothing)
+            //If we found topics for this specific topic, use them
+            //Otherwise, use all questions we found (better than nothing)
             setPreviousQuestions(uniqueQuestions);
             console.log(`Set ${uniqueQuestions.length} unique previous questions`);
           } else {
-            // If no previous questions found, set empty array
+            //If no previous questions found, set empty array
             console.log('No previous questions found in performance data');
             setPreviousQuestions([]);
           }
@@ -153,15 +142,14 @@ export default function DynamicExerciseScreen({ route, navigation }) {
     } finally {
       setLoading(false);
     }
-  };
+  }
 
   const generateQuestions = async () => {
     setLoading(true);
     setNetworkError(false);
 
     try {
-      // Get the user's preferred difficulty level
-      let difficulty = 'normal'; // Default
+      let difficulty = 'normal';
       try {
         const savedDifficulty = await AsyncStorage.getItem('questionDifficulty');
         if (savedDifficulty) {
@@ -171,16 +159,13 @@ export default function DynamicExerciseScreen({ route, navigation }) {
         console.log('Could not load difficulty setting:', error);
       }
 
-      // Get the appropriate model based on tutor
       const tutorModel = {
         biology: 'ft:gpt-3.5-turbo-0125:personal:csp-biology-finetuning-data10-20000:BJN7IqeS',
         python: 'ft:gpt-3.5-turbo-0125:personal:dr1-csv6-shortened-3381:B0DlvD7p'
       }[tutor] || 'gpt-3.5-turbo';
 
-      // Generate unique identifier for variety
       const uniqueId = Math.random().toString(36).substring(2, 8);
 
-      // Create difficulty-specific guidance
       let difficultyGuide = '';
       if (difficulty === 'easy') {
         difficultyGuide = 'Create beginner-friendly questions that focus on basic concepts and definitions. Use simple language and provide clear context. These should help build foundational knowledge.';
@@ -204,7 +189,7 @@ export default function DynamicExerciseScreen({ route, navigation }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           message: prompt,
-          model: tutorModel, // Use the subject-specific model
+          model: tutorModel,
           tutor
         }),
         timeout: 15000
@@ -216,7 +201,6 @@ export default function DynamicExerciseScreen({ route, navigation }) {
 
       const data = await response.json();
 
-      // Parse the AI response to extract the questions
       let parsedQuestions;
       try {
         // Try different parsing strategies
@@ -360,7 +344,7 @@ export default function DynamicExerciseScreen({ route, navigation }) {
           cardId: questionId,
           question: question.question,
           answer: userAnswer,
-          subtopic: topic || 'general', // Use topic as subtopic
+          subtopic: topic || 'general',
           attempts: fbk.evaluated ? 1 : 0,
           correctAttempts: fbk.correct ? 1 : 0
         };
@@ -620,7 +604,7 @@ export default function DynamicExerciseScreen({ route, navigation }) {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#4CAF50" />
+        <ActivityIndicator size="large" color="#FE7648" />
         <Text style={styles.loadingText}>
           {showQuizOptions ? "Loading quiz options..." : "Generating questions..."}
         </Text>
@@ -743,7 +727,7 @@ export default function DynamicExerciseScreen({ route, navigation }) {
 
         {submitting && (
           <View style={styles.submittingContainer}>
-            <ActivityIndicator size="small" color="#4CAF50" />
+            <ActivityIndicator size="small" color="#FE7648" />
             <Text style={styles.submittingText}>Evaluating your answer...</Text>
           </View>
         )}
@@ -860,7 +844,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   optionButton: {
-    backgroundColor: '#4CAF50',
+    backgroundColor: '#FE7648',
     borderRadius: 10,
     padding: 20,
     marginBottom: 20,
@@ -868,7 +852,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   disabledButton: {
-    backgroundColor: '#A5D6A7',
+    backgroundColor: '#FF9B7A',
   },
   optionButtonText: {
     color: '#FFFFFF',
@@ -896,7 +880,7 @@ const styles = StyleSheet.create({
   },
   statsText: {
     fontWeight: 'bold',
-    color: '#4CAF50',
+    color: '#FE7648',
     marginBottom: 5,
   },
   statsDetail: {
@@ -923,7 +907,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   easyBadge: {
-    backgroundColor: '#4CAF50',
+    backgroundColor: '#FE7648',
   },
   normalBadge: {
     backgroundColor: '#2196F3',
@@ -970,7 +954,7 @@ const styles = StyleSheet.create({
   },
   correctFeedback: {
     backgroundColor: '#e8f5e9',
-    borderColor: '#4CAF50',
+    borderColor: '#FE7648',
     borderWidth: 1,
   },
   incorrectFeedback: {
@@ -992,7 +976,7 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   submitButton: {
-    backgroundColor: '#4CAF50',
+    backgroundColor: '#FE7648',
     padding: 15,
     borderRadius: 8,
     alignItems: 'center',

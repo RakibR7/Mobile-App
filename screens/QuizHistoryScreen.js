@@ -1,4 +1,3 @@
-// screens/QuizHistoryScreen.js
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, FlatList,
@@ -22,18 +21,17 @@ export default function QuizHistoryScreen({ route, navigation }) {
     accuracy: 0,
     totalTime: 0,
     averageScore: 0
-  });
+  })
 
-  // Debug information
   const [debugInfo, setDebugInfo] = useState({
     requestParams: {},
     responseData: null,
     error: null
-  });
+  })
 
   useEffect(() => {
     fetchHistory();
-  }, []);
+  }, [])
 
   const fetchHistory = async () => {
     if (!userId) {
@@ -63,7 +61,6 @@ export default function QuizHistoryScreen({ route, navigation }) {
 
       console.log(`Found ${data?.length || 0} quiz history records with specific topic`);
 
-      //If we get no results, try with a more general search without the topic
       if (!data || data.length === 0) {
         console.log('No records found with specific topic, trying broader search');
         data = await getPerformanceData(
@@ -92,7 +89,7 @@ export default function QuizHistoryScreen({ route, navigation }) {
                  normalizedTopic.includes(sessionTopic) ||
                  sessionSubtopic.includes(normalizedTopic) ||
                  normalizedTopic.includes(sessionSubtopic);
-        });
+        })
 
         console.log(`Filtered to ${filteredData.length} relevant records`);
       }
@@ -127,7 +124,7 @@ export default function QuizHistoryScreen({ route, navigation }) {
         accuracy: totalQuestions > 0 ? Math.round((totalCorrect / totalQuestions) * 100) : 0,
         totalTime,
         averageScore: totalQuizzes > 0 ? Math.round(totalCorrect / totalQuizzes) : 0
-      })
+      });
 
     } catch (error) {
       console.error('Error fetching quiz history:', error);
@@ -176,8 +173,113 @@ export default function QuizHistoryScreen({ route, navigation }) {
       `Response: ${JSON.stringify(debugInfo.responseData)}\n\n` +
       `Error: ${debugInfo.error || 'None'}`,
       [{ text: 'OK' }]
-    );
-  };
+    )
+  }
+
+  function renderContent() {
+    if (sessions.length > 0) {
+      return (
+        <>
+          <Text style={styles.sectionTitle}>Quiz Sessions</Text>
+          {sessions.map((item, index) => {
+            let sessionQuestions = 0;
+            let sessionCorrect = 0;
+            let sessionTime = 0;
+
+            if (item.sessionData) {
+              sessionQuestions = item.sessionData.cardsStudied || 0;
+              sessionCorrect = item.sessionData.correctAnswers || 0;
+              sessionTime = item.sessionData.timeSpent || 0;
+            } else if (item.sessions && Array.isArray(item.sessions) && item.sessions.length > 0) {
+              item.sessions.forEach(s => {
+                sessionQuestions += s.cardsStudied || 0;
+                sessionCorrect += s.correctAnswers || 0;
+                sessionTime += s.timeSpent || 0;
+              })
+            }
+
+            const accuracy = sessionQuestions > 0 ? Math.round((sessionCorrect / sessionQuestions) * 100) : 0;
+
+            return (
+              <View key={item._id || index} style={styles.sessionCard}>
+                <View style={styles.sessionHeader}>
+                  <Text style={styles.sessionDate}>
+                    {formatDate(item.createdAt || new Date())}
+                  </Text>
+                  <View style={[
+                    styles.scoreTag,
+                    {backgroundColor: getScoreColor(accuracy)}
+                  ]}>
+                    <Text style={styles.scoreText}>{accuracy}%</Text>
+                  </View>
+                </View>
+
+                <Text style={styles.sessionTopic}>
+                  {item.topic || item.subtopic || 'Unknown Topic'}
+                </Text>
+
+                <View style={styles.sessionStats}>
+                  <View style={styles.sessionStat}>
+                    <Text style={styles.sessionStatValue}>{sessionQuestions}</Text>
+                    <Text style={styles.sessionStatLabel}>Questions</Text>
+                  </View>
+
+                  <View style={styles.sessionStat}>
+                    <Text style={styles.sessionStatValue}>{sessionCorrect}</Text>
+                    <Text style={styles.sessionStatLabel}>Correct</Text>
+                  </View>
+
+                  <View style={styles.sessionStat}>
+                    <Text style={styles.sessionStatValue}>{formatTime(sessionTime)}</Text>
+                    <Text style={styles.sessionStatLabel}>Time</Text>
+                  </View>
+                </View>
+
+                <View style={styles.sessionProgressContainer}>
+                  <View style={styles.progressBackground}>
+                    <View
+                      style={[
+                        styles.progressFill,
+                        {
+                          width: `${accuracy}%`,
+                          backgroundColor: getScoreColor(accuracy)
+                        }
+                      ]}
+                    />
+                  </View>
+                </View>
+              </View>
+            )
+          })}
+        </>
+      )
+    } else {
+      return (
+        <View style={styles.emptyContainer}>
+          <Text style={styles.emptyMessage}>
+            No quiz history found for this topic.
+          </Text>
+          <Text style={styles.emptySubtext}>
+            Complete a quiz to see your performance here.
+          </Text>
+        </View>
+      )
+    }
+  }
+
+  function renderPracticeButton() {
+    if (sessions.length > 0) {
+      return (
+        <TouchableOpacity
+          style={styles.practiceButton}
+          onPress={() => navigation.navigate('TopicSelection', { tutor, preSelectedTopic: topic })}
+        >
+          <Text style={styles.practiceButtonText}>Practice More</Text>
+        </TouchableOpacity>
+      )
+    }
+    return null;
+  }
 
   if (loading && !refreshing) {
     return (
@@ -266,109 +368,17 @@ export default function QuizHistoryScreen({ route, navigation }) {
         </View>
       )}
 
-      {sessions.length > 0 ? (
-        <>
-          <Text style={styles.sectionTitle}>Quiz Sessions</Text>
-
-          {sessions.map((item, index) => {
-            let sessionQuestions = 0;
-            let sessionCorrect = 0;
-            let sessionTime = 0;
-
-            if (item.sessionData) {
-              sessionQuestions = item.sessionData.cardsStudied || 0;
-              sessionCorrect = item.sessionData.correctAnswers || 0;
-              sessionTime = item.sessionData.timeSpent || 0;
-            } else if (item.sessions && Array.isArray(item.sessions) && item.sessions.length > 0) {
-              item.sessions.forEach(s => {
-                sessionQuestions += s.cardsStudied || 0;
-                sessionCorrect += s.correctAnswers || 0;
-                sessionTime += s.timeSpent || 0;
-              });
-            }
-
-            const accuracy = sessionQuestions > 0 ? Math.round((sessionCorrect / sessionQuestions) * 100) : 0;
-
-            return (
-              <View key={item._id || index} style={styles.sessionCard}>
-                <View style={styles.sessionHeader}>
-                  <Text style={styles.sessionDate}>
-                    {formatDate(item.createdAt || new Date())}
-                  </Text>
-                  <View style={[
-                    styles.scoreTag,
-                    {backgroundColor: getScoreColor(accuracy)}
-                  ]}>
-                    <Text style={styles.scoreText}>{accuracy}%</Text>
-                  </View>
-                </View>
-
-                <Text style={styles.sessionTopic}>
-                  {item.topic || item.subtopic || 'Unknown Topic'}
-                </Text>
-
-                <View style={styles.sessionStats}>
-                  <View style={styles.sessionStat}>
-                    <Text style={styles.sessionStatValue}>{sessionQuestions}</Text>
-                    <Text style={styles.sessionStatLabel}>Questions</Text>
-                  </View>
-
-                  <View style={styles.sessionStat}>
-                    <Text style={styles.sessionStatValue}>{sessionCorrect}</Text>
-                    <Text style={styles.sessionStatLabel}>Correct</Text>
-                  </View>
-
-                  <View style={styles.sessionStat}>
-                    <Text style={styles.sessionStatValue}>{formatTime(sessionTime)}</Text>
-                    <Text style={styles.sessionStatLabel}>Time</Text>
-                  </View>
-                </View>
-
-                <View style={styles.sessionProgressContainer}>
-                  <View style={styles.progressBackground}>
-                    <View
-                      style={[
-                        styles.progressFill,
-                        {
-                          width: `${accuracy}%`,
-                          backgroundColor: getScoreColor(accuracy)
-                        }
-                      ]}
-                    />
-                  </View>
-                </View>
-              </View>
-            );
-          })}
-        </>
-      ) : (
-        <View style={styles.emptyContainer}>
-          <Text style={styles.emptyMessage}>
-            No quiz history found for this topic.
-          </Text>
-          <Text style={styles.emptySubtext}>
-            Complete a quiz to see your performance here.
-          </Text>
-        </View>
-      )}
+      {renderContent()}
 
       <TouchableOpacity
         style={styles.backButton}
-        onPress={() => navigation.goBack()}
-      >
+        onPress={() => navigation.goBack()}>
         <Text style={styles.backButtonText}>Go Back</Text>
       </TouchableOpacity>
 
-      {sessions.length > 0 && (
-        <TouchableOpacity
-          style={styles.practiceButton}
-          onPress={() => navigation.navigate('TopicSelection', { tutor, preSelectedTopic: topic })}
-        >
-          <Text style={styles.practiceButtonText}>Practice More</Text>
-        </TouchableOpacity>
-      )}
+      {renderPracticeButton()}
     </ScrollView>
-  );
+  )
 }
 
 const styles = StyleSheet.create({
@@ -600,4 +610,4 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
   }
-});
+})

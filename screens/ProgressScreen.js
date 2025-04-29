@@ -72,7 +72,6 @@ export default function ProgressScreen({ navigation }) {
     let totalCorrect = 0;
     let totalAttempts = 0;
 
-    //Subject and topic tracking
     const subjectCounts = {};
     const topicCounts = {};
 
@@ -88,7 +87,6 @@ export default function ProgressScreen({ navigation }) {
       }
     })
 
-    //most studied subject and topic
     let mostStudiedSubject = 'None';
     let maxSubjectCount = 0;
 
@@ -109,7 +107,6 @@ export default function ProgressScreen({ navigation }) {
       }
     }
 
-    //success rate
     const successRate = totalAttempts > 0
       ? Math.round((totalCorrect / totalAttempts) * 100)
       : 0;
@@ -133,6 +130,56 @@ export default function ProgressScreen({ navigation }) {
     }
   }
 
+  function renderSubjectsSection() {
+    const subjects = [...new Set([
+      ...performanceData.flashcards.map(item => item.tutor),
+      ...performanceData.quizzes.map(item => item.tutor)
+    ])];
+
+    if (subjects.length > 0) {
+      return (
+        <View style={styles.subjectsSection}>
+          <Text style={styles.sectionTitle}>Subjects Progress</Text>
+
+          {subjects.map((subject, index) => {
+            const flashcardCount = performanceData.flashcards.filter(
+              item => item.tutor === subject
+            ).length;
+
+            const quizCount = performanceData.quizzes.filter(
+              item => item.tutor === subject
+            ).length;
+
+            return (
+              <View key={index} style={styles.subjectCard}>
+                <Text style={styles.subjectName}>
+                  {subject.charAt(0).toUpperCase() + subject.slice(1)}
+                </Text>
+
+                <View style={styles.subjectStats}>
+                  <TouchableOpacity
+                    style={styles.subjectStat}
+                    onPress={() => navigateToActivityHistory('flashcard', subject)}>
+                    <Text style={styles.subjectStatValue}>{flashcardCount}</Text>
+                    <Text style={styles.subjectStatLabel}>Flashcard Sets</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={styles.subjectStat}
+                    onPress={() => navigateToActivityHistory('quiz', subject)}>
+                    <Text style={styles.subjectStatValue}>{quizCount}</Text>
+                    <Text style={styles.subjectStatLabel}>Quizzes</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            );
+          })}
+        </View>
+      );
+    }
+    return null;
+  }
+
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
@@ -141,12 +188,6 @@ export default function ProgressScreen({ navigation }) {
       </View>
     )
   }
-
-
-  const subjects = [...new Set([
-    ...performanceData.flashcards.map(item => item.tutor),
-    ...performanceData.quizzes.map(item => item.tutor)
-  ])];
 
   return (
     <ScrollView style={styles.container}>
@@ -218,50 +259,11 @@ export default function ProgressScreen({ navigation }) {
         </View>
       </View>
 
-      {subjects.length > 0 && (
-        <View style={styles.subjectsSection}>
-          <Text style={styles.sectionTitle}>Subjects Progress</Text>
-
-          {subjects.map((subject, index) => {
-            const flashcardCount = performanceData.flashcards.filter(
-              item => item.tutor === subject
-            ).length;
-
-            const quizCount = performanceData.quizzes.filter(
-              item => item.tutor === subject
-            ).length;
-
-            return (
-              <View key={index} style={styles.subjectCard}>
-                <Text style={styles.subjectName}>
-                  {subject.charAt(0).toUpperCase() + subject.slice(1)}
-                </Text>
-
-                <View style={styles.subjectStats}>
-                  <TouchableOpacity
-                    style={styles.subjectStat}
-                    onPress={() => navigateToActivityHistory('flashcard', subject)}>
-                    <Text style={styles.subjectStatValue}>{flashcardCount}</Text>
-                    <Text style={styles.subjectStatLabel}>Flashcard Sets</Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    style={styles.subjectStat}
-                    onPress={() => navigateToActivityHistory('quiz', subject)}>
-                    <Text style={styles.subjectStatValue}>{quizCount}</Text>
-                    <Text style={styles.subjectStatLabel}>Quizzes</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            );
-          })}
-        </View>
-      )}
+      {renderSubjectsSection()}
 
       <TouchableOpacity
         style={styles.refreshButton}
-        onPress={fetchData}
-      >
+        onPress={fetchData}>
         <Text style={styles.refreshButtonText}>Refresh Data</Text>
       </TouchableOpacity>
     </ScrollView>
@@ -440,4 +442,4 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     fontSize: 16,
   }
-})
+}

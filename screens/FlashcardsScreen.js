@@ -39,7 +39,6 @@ const getDefaultFlashcards = (topic, tutor) => {
   ]
 }
 
-//Get specific defaultcards for biology topics
 const getBiologyFlashcards = (topic) => {
   if (topic === "cells") {
     return [

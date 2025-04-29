@@ -25,6 +25,7 @@
     },
     "web": {
       "favicon": "./assets/study.jpg"
-    }
+    },
+    "newArchEnabled": true
   }
 }

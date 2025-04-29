@@ -1,8 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import {
-  View, Text, StyleSheet, TouchableOpacity, Animated,
-  ActivityIndicator, Dimensions, Alert, ScrollView
-} from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Animated, ActivityIndicator, Dimensions, Alert, ScrollView} from 'react-native';
 import { useUser } from '../context/UserContext';
 import { updatePerformanceData, getPerformanceData } from '../services/apiService';
 import AsyncStorage from '@react-native-async-storage/async-storage';

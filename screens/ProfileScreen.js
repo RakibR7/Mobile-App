@@ -224,16 +224,14 @@ const ProfileScreen = ({ navigation }) => {
           <View style={styles.actionButtons}>
             <TouchableOpacity
               style={[styles.button, styles.cancelButton]}
-              onPress={() => setIsEditing(false)}
-            >
+              onPress={() => setIsEditing(false)}>
               <Text style={styles.cancelButtonText}>Cancel</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
               style={[styles.button, styles.saveButton]}
               onPress={handleSaveProfile}
-              disabled={loading}
-            >
+              disabled={loading}>
               {renderSaveButtonContent()}
             </TouchableOpacity>
           </View>

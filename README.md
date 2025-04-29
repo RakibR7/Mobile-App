@@ -26,12 +26,12 @@ This is a mobile application designed to provide students with AI-powered tutori
 
 1. Clone this repository
    ```
-   git clone https://github.com/yourusername/mentor-ai.git
+   git clone https://github.com/RakibR7/Mobile-App
    ```
 
 2. Install dependencies
    ```
-   cd mentor-ai
+   cd root-directory
    npm install
    ```
 

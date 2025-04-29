@@ -1,4 +1,3 @@
-// screens/SignInScreen.js (update)
 import React, { useState } from 'react';
 import {
   View,
@@ -24,30 +23,27 @@ const SignInScreen = ({ navigation }) => {
   const validateForm = () => {
     const newErrors = {};
 
-    // Validate email
     if (!email.trim()) {
       newErrors.email = 'Email is required';
     }
 
-    // Validate password
     if (!password) {
       newErrors.password = 'Password is required';
     }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
-  };
+  }
 
   const handleSignIn = async () => {
     if (!validateForm()) return;
 
     try {
       await signIn(email, password);
-      // Navigation to main app will be handled by App.js based on auth state
     } catch (error) {
       Alert.alert('Login Failed', error.message);
     }
-  };
+  }
 
   return (
     <KeyboardAvoidingView
@@ -103,16 +99,14 @@ const SignInScreen = ({ navigation }) => {
                 navigation.navigate('ForgotPassword');
               }
             }}
-            style={styles.forgotPasswordContainer}
-          >
+            style={styles.forgotPasswordContainer}>
             <Text style={styles.forgotPasswordText}>Forgot password?</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
             style={styles.signInButton}
             onPress={handleSignIn}
-            disabled={loading}
-          >
+            disabled={loading}>
             {loading ? <ActivityIndicator color="#FFFFFF" size="small" /> : <Text style={styles.signInButtonText}>Log In</Text>}
           </TouchableOpacity>
         </View>
@@ -131,8 +125,8 @@ const SignInScreen = ({ navigation }) => {
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
-  );
-};
+  )
+}
 
 const styles = StyleSheet.create({
   container: {

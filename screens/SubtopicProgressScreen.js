@@ -1,4 +1,3 @@
-// screens/SubtopicProgressScreen.js
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity,
@@ -8,7 +7,6 @@ import { useUser } from '../context/UserContext';
 
 const { width } = Dimensions.get('window');
 
-// Subject data with subtopics
 const subjectsData = {
   biology: {
     name: "Biology",
@@ -30,7 +28,7 @@ const subjectsData = {
       { id: 'libraries', name: 'Libraries & Modules'}
     ]
   }
-};
+}
 
 export default function SubtopicProgressScreen({ route, navigation }) {
   const { tutor } = route.params;
@@ -42,7 +40,7 @@ export default function SubtopicProgressScreen({ route, navigation }) {
 
   useEffect(() => {
     fetchProgress();
-  }, []);
+  }, [])
 
   const fetchProgress = async () => {
     if (!userId) return;
@@ -51,7 +49,6 @@ export default function SubtopicProgressScreen({ route, navigation }) {
     setError(null);
 
     try {
-      // Fetch progress data from API
       const response = await fetch(`https://api.teachmetutor.academy/api/progress/subtopics?userId=${userId}&tutor=${tutor}`);
 
       if (!response.ok) {
@@ -61,23 +58,20 @@ export default function SubtopicProgressScreen({ route, navigation }) {
       const data = await response.json();
       console.log('Received progress data:', data);
 
-      // Map subtopic data to include UI info
       const enrichedSubtopics = data.subtopics.map(subtopic => {
-        // Find UI info for this subtopic
         const uiInfo = subjectsData[tutor]?.subtopics.find(st => st.id === subtopic.subtopic) || {
           id: subtopic.subtopic,
           name: subtopic.subtopic,
           icon: '📚'
-        };
+        }
 
         return {
           ...subtopic,
           ...uiInfo,
-          id: subtopic.subtopic // Ensure ID is set from the subtopic field
-        };
-      });
+          id: subtopic.subtopic
+        }
+      })
 
-      // For any subtopics that don't have progress data yet, add them with 0 progress
       const existingSubtopicIds = enrichedSubtopics.map(st => st.id);
       const missingSubtopics = (subjectsData[tutor]?.subtopics || [])
         .filter(st => !existingSubtopicIds.includes(st.id))
@@ -89,16 +83,15 @@ export default function SubtopicProgressScreen({ route, navigation }) {
           correctCards: 0,
           sessionsCount: 0,
           subtopic: st.id
-        }));
+        }))
 
-      // Combine and sort by progress (highest first)
       const allSubtopics = [...enrichedSubtopics, ...missingSubtopics]
         .sort((a, b) => b.progress - a.progress);
 
       setProgress({
         overall: data.overall || 0,
         subtopics: allSubtopics
-      });
+      })
 
     } catch (error) {
       console.error('Error fetching progress:', error);
@@ -106,7 +99,7 @@ export default function SubtopicProgressScreen({ route, navigation }) {
     } finally {
       setLoading(false);
     }
-  };
+  }
 
   const getMasteryText = (level) => {
     switch (level) {
@@ -118,26 +111,26 @@ export default function SubtopicProgressScreen({ route, navigation }) {
       case 5: return 'Expert';
       default: return 'Unknown';
     }
-  };
+  }
 
   const getMasteryColor = (level) => {
     switch (level) {
-      case 0: return '#9E9E9E'; // Gray
-      case 1: return '#F44336'; // Red
-      case 2: return '#FF9800'; // Orange
-      case 3: return '#FFEB3B'; // Yellow
-      case 4: return '#8BC34A'; // Light Green
-      case 5: return '#FE7648'; // Green
+      case 0: return '#9E9E9E';
+      case 1: return '#F44336';
+      case 2: return '#FF9800';
+      case 3: return '#FFEB3B';
+      case 4: return '#8BC34A';
+      case 5: return '#FE7648';
       default: return '#9E9E9E';
     }
-  };
+  }
 
   const navigateToSubtopic = (subtopic) => {
     navigation.navigate('TopicSelection', {
       tutor,
       preSelectedTopic: subtopic.id
-    });
-  };
+    })
+  }
 
   if (loading) {
     return (
@@ -145,7 +138,7 @@ export default function SubtopicProgressScreen({ route, navigation }) {
         <ActivityIndicator size="large" color="#FE7648" />
         <Text style={styles.loadingText}>Loading progress data...</Text>
       </View>
-    );
+    )
   }
 
   if (error) {
@@ -157,7 +150,7 @@ export default function SubtopicProgressScreen({ route, navigation }) {
           <Text style={styles.retryButtonText}>Retry</Text>
         </TouchableOpacity>
       </View>
-    );
+    )
   }
 
   return (
@@ -196,8 +189,7 @@ export default function SubtopicProgressScreen({ route, navigation }) {
         renderItem={({ item }) => (
           <TouchableOpacity
             style={styles.subtopicCard}
-            onPress={() => navigateToSubtopic(item)}
-          >
+            onPress={() => navigateToSubtopic(item)}>
             <View style={styles.subtopicHeader}>
               <Text style={styles.subtopicIcon}>{item.icon}</Text>
               <Text style={styles.subtopicName}>{item.name}</Text>
@@ -205,8 +197,7 @@ export default function SubtopicProgressScreen({ route, navigation }) {
                 style={[
                   styles.masteryBadge,
                   { backgroundColor: getMasteryColor(item.masteryLevel) }
-                ]}
-              >
+                ]}>
                 <Text style={styles.masteryText}>
                   {getMasteryText(item.masteryLevel)}
                 </Text>
@@ -252,8 +243,7 @@ export default function SubtopicProgressScreen({ route, navigation }) {
             </Text>
             <TouchableOpacity
               style={styles.emptyButton}
-              onPress={() => navigation.navigate('TopicSelection', { tutor })}
-            >
+              onPress={() => navigation.navigate('TopicSelection', { tutor })}>
               <Text style={styles.emptyButtonText}>Start Learning</Text>
             </TouchableOpacity>
           </View>
@@ -262,12 +252,11 @@ export default function SubtopicProgressScreen({ route, navigation }) {
 
       <TouchableOpacity
         style={styles.refreshButton}
-        onPress={fetchProgress}
-      >
+        onPress={fetchProgress}>
         <Text style={styles.refreshButtonText}>Refresh Progress</Text>
       </TouchableOpacity>
     </View>
-  );
+  )
 }
 
 const styles = StyleSheet.create({
@@ -480,4 +469,4 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     fontSize: 16,
   }
-});
+})

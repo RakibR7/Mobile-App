@@ -48,8 +48,7 @@ const SignInScreen = ({ navigation }) => {
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={styles.container}
-    >
+      style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContainer}>
         <View style={styles.logoContainer}>
           <Text style={styles.logoText}>AI Mentor</Text>
@@ -107,7 +106,7 @@ const SignInScreen = ({ navigation }) => {
             style={styles.signInButton}
             onPress={handleSignIn}
             disabled={loading}>
-            {loading ? <ActivityIndicator color="#FFFFFF" size="small" /> : <Text style={styles.signInButtonText}>Log In</Text>}
+            {renderButtonContent()}
           </TouchableOpacity>
         </View>
 
@@ -126,6 +125,14 @@ const SignInScreen = ({ navigation }) => {
       </ScrollView>
     </KeyboardAvoidingView>
   )
+
+  function renderButtonContent() {
+    if (loading) {
+      return <ActivityIndicator color="#FFFFFF" size="small" />;
+    } else {
+      return <Text style={styles.signInButtonText}>Log In</Text>;
+    }
+  }
 }
 
 const styles = StyleSheet.create({

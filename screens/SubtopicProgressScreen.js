@@ -62,7 +62,7 @@ export default function SubtopicProgressScreen({ route, navigation }) {
         const uiInfo = subjectsData[tutor]?.subtopics.find(st => st.id === subtopic.subtopic) || {
           id: subtopic.subtopic,
           name: subtopic.subtopic,
-          icon: '📚'
+          icon: ''
         }
 
         return {

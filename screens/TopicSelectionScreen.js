@@ -51,14 +51,14 @@ export default function TopicSelectionScreen({ route, navigation }) {
           tutor,
           topic: topic.id,
           topicName: topic.name
-        });
+        })
         break;
       case 'quiz':
         navigation.navigate('DynamicExercise', {
           tutor,
           topic: topic.id,
           topicName: topic.name
-        });
+        })
         break;
       default:
         Alert.alert('Feature Not Available', 'This feature is coming soon!');

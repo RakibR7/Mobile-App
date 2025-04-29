@@ -142,15 +142,14 @@ export default function DynamicExerciseScreen({ route, navigation }) {
     } finally {
       setLoading(false);
     }
-  };
+  }
 
   const generateQuestions = async () => {
     setLoading(true);
     setNetworkError(false);
 
     try {
-      // Get the user's preferred difficulty level
-      let difficulty = 'normal'; // Default
+      let difficulty = 'normal';
       try {
         const savedDifficulty = await AsyncStorage.getItem('questionDifficulty');
         if (savedDifficulty) {
@@ -160,16 +159,13 @@ export default function DynamicExerciseScreen({ route, navigation }) {
         console.log('Could not load difficulty setting:', error);
       }
 
-      // Get the appropriate model based on tutor
       const tutorModel = {
         biology: 'ft:gpt-3.5-turbo-0125:personal:csp-biology-finetuning-data10-20000:BJN7IqeS',
         python: 'ft:gpt-3.5-turbo-0125:personal:dr1-csv6-shortened-3381:B0DlvD7p'
       }[tutor] || 'gpt-3.5-turbo';
 
-      // Generate unique identifier for variety
       const uniqueId = Math.random().toString(36).substring(2, 8);
 
-      // Create difficulty-specific guidance
       let difficultyGuide = '';
       if (difficulty === 'easy') {
         difficultyGuide = 'Create beginner-friendly questions that focus on basic concepts and definitions. Use simple language and provide clear context. These should help build foundational knowledge.';
@@ -193,7 +189,7 @@ export default function DynamicExerciseScreen({ route, navigation }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           message: prompt,
-          model: tutorModel, // Use the subject-specific model
+          model: tutorModel,
           tutor
         }),
         timeout: 15000
@@ -205,7 +201,6 @@ export default function DynamicExerciseScreen({ route, navigation }) {
 
       const data = await response.json();
 
-      // Parse the AI response to extract the questions
       let parsedQuestions;
       try {
         // Try different parsing strategies

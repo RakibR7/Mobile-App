@@ -1,4 +1,3 @@
-// services/apiService.js
 const API_BASE_URL = process.env.REACT_APP_API_URL || "https://api.teachmetutor.academy";
 
 const fetchWithTimeout = async (url, options = {}, timeout = 8000) => {

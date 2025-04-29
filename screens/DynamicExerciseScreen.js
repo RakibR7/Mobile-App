@@ -647,8 +647,7 @@ export default function DynamicExerciseScreen({ route, navigation }) {
         <TouchableOpacity
           style={styles.submitButton}
           onPress={evaluateCurrentAnswer}
-          disabled={submitting}
-        >
+          disabled={submitting}>
           <Text style={styles.buttonText}>Submit Answer</Text>
         </TouchableOpacity>
       )
@@ -663,8 +662,7 @@ export default function DynamicExerciseScreen({ route, navigation }) {
       return (
         <TouchableOpacity
           style={styles.nextButton}
-          onPress={moveToNextQuestion}
-        >
+          onPress={moveToNextQuestion}>
           <Text style={styles.buttonText}>{buttonText}</Text>
         </TouchableOpacity>
       )
@@ -793,8 +791,7 @@ export default function DynamicExerciseScreen({ route, navigation }) {
               } else {
                 setShowQuizOptions(true)
               }
-            }}
-          >
+            }}>
             <Text style={styles.optionsButtonText}>Quiz Options</Text>
           </TouchableOpacity>
         </View>
